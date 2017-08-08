@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.Floor_informationMapper">
+
+<insert id="insertDrawing">
+insert into drawing (DRW_FLPTH)
+values(#{drw_flpth})
+</insert>
+
+<insert id="insertFloor_information">
+insert into floor_information
+	(bhf_code, drw_code, floorinfo_floor, floorinfo_rgsde, size_x, size_y)
+values 
+	( #{bhf_code}, LAST_INSERT_ID(), #{floorinfo_floor}, date(now()), #{size_x}, #{size_y} )
+
+<!-- insert into FLOOR_INFORMATION
+	(BHF_CODE, DRW_CODE, FLOORINFO_FLOOR, FLOORINFO_RGSDE)
+values (#{bhf_code}, #{drw_code}, #{floorinfo_floor}, now()) -->
+</insert>
+
+<!-- 
+	현재 존재하는 그림 뽑아오기? 정확히기억안남 해석할 것
+ -->
+<select id="selectDrawingList" resultType="java.util.HashMap">
+select f.floorinfo_floor, d.drw_flpth
+from drawing d, floor_information f
+where BHF_CODE = #{bhf_code}
+and f.DRW_CODE = d.DRW_CODE
+order by FLOORINFO_RGSDE desc
+</select>
+
+<select id="selectLast_insert_id" resultType="Integer">
+select LAST_INSERT_ID();
+</select>
+
+<!--
+	도면 한장 뽑기 위한 것 
+	한층에 한개씩만 적용되며 적용 기준은 먼저 날짜, 날짜가 같을 경우 도면코드가 큰 순임.
+-->
+<select id="selectDrawingOne" resultType="java.util.HashMap">
+select
+	f.floorinfo_floor, d.drw_flpth, d.drw_code, f.size_x, f.size_y
+from
+	drawing d, floor_information f
+where
+	bhf_code = #{bhf_code}
+and
+	FLOORINFO_FLOOR = #{floor}
+and
+	f.DRW_CODE = d.DRW_CODE
+order by f.FLOORINFO_RGSDE desc
+limit 0,1
+
+<!-- select
+	f.floorinfo_floor, d.drw_flpth, d.drw_code, f.size_x, f.size_y
+from
+	drawing d, floor_information f
+where
+	f.DRW_CODE IN	(
+						select max(drw_code)
+						from
+							floor_information
+						where bhf_code = #{bhf_code}
+						group by floorinfo_floor
+					)
+and
+	f.DRW_CODE = d.DRW_CODE
+order by f.FLOORINFO_RGSDE asc, f.FLOORINFO_FLOOR asc
+limit #{floor},1 -->
+</select>
+
+<select id="selectTileCategoryList" resultType="java.util.HashMap">
+
+select
+	tc.TILE_CODE, tc.TILE_NM, tc.TILE_CRDNT_X, tc.TILE_CRDNT_Y, 
+	tc.DETAILCTGRY_CODE, tc.DETAILCTGRY_NM, 
+	tc.LCLASCTGRY_NM, tc.LCLASCTGRY_CODE, tc.LCLASCTGRY_COLOR,
+	ifnull(c.tile_visit, 0),
+	t.total_visit,
+	ifnull((c.tile_visit / t.total_visit), 0) AS probability
+from
+	(
+		select
+			count(DISTINCT user_id) AS total_visit
+		from
+			course
+		where
+			date(COURS_PASNG_TIME) >= date(subdate(curDate(), INTERVAL 30 DAY))
+	) t,
+	
+	(		
+		select
+			t.TILE_CODE, t.TILE_NM, t.TILE_CRDNT_X, t.TILE_CRDNT_Y, 
+			dcl.DETAILCTGRY_CODE, dc.DETAILCTGRY_NM, 
+			lcc.LCLASCTGRY_NM, lcc.LCLASCTGRY_CODE, lcc.LCLASCTGRY_COLOR
+		from
+			detail_category_location dcl,
+			(
+				select
+					TILE_CODE, TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y
+				from
+					tile 
+				where
+					drw_code = #{drw_code}
+			) t,
+			detail_category dc,
+			large_classification_category lcc
+			
+		where
+			dcl.TILE_CODE = t.TILE_CODE
+		and
+			dc.DETAILCTGRY_CODE = dcl.DETAILCTGRY_CODE
+		and
+			lcc.LCLASCTGRY_CODE = dc.LCLASCTGRY_CODE
+		order by
+			t.TILE_CRDNT_X asc, t.TILE_CRDNT_Y asc
+	) tc
+LEFT OUTER JOIN
+	(
+		select
+			tile_code, count(DISTINCT user_id) AS tile_visit
+		from
+			course
+		where
+			TILE_CODE IN	(
+								select
+									TILE_CODE
+								from
+									tile
+								where
+									DRW_CODE = #{drw_code}
+							)
+		and
+			date(COURS_PASNG_TIME) >= date(subdate(CURDATE(), INTERVAL 30 DAY))
+		group by
+			TILE_CODE
+	) c
+ON
+	tc.TILE_CODE = c.TILE_CODE
+order by probability desc, TILE_CODE asc
+<!-- select
+	t.TILE_CODE, t.TILE_NM, t.TILE_CRDNT_X, t.TILE_CRDNT_Y, 
+	dcl.DETAILCTGRY_CODE, dc.DETAILCTGRY_NM, dc.DETAILCTGRY_COLOR, 
+	lcc.LCLASCTGRY_NM, lcc.LCLASCTGRY_CODE, lcc.LCLASCTGRY_COLOR
+from
+	detail_category_location dcl,
+	(
+		select
+		TILE_CODE, TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y
+		from
+			tile 
+		where
+			drw_code = #{drw_code}
+	) t,
+	detail_category dc,
+	large_classification_category lcc
+	
+where
+	dcl.TILE_CODE = t.TILE_CODE
+and
+	dc.DETAILCTGRY_CODE = dcl.DETAILCTGRY_CODE
+and
+	lcc.LCLASCTGRY_CODE = dc.DETAILCTGRY_CODE
+order by
+	t.TILE_CRDNT_X asc, t.TILE_CRDNT_Y asc; -->
+	
+</select>
+
+<select id="selectCountStory" resultType="integer">
+select count(DISTINCT FLOORINFO_FLOOR)
+from floor_information
+where BHF_CODE = #{bhf_code}
+</select>
+
+</mapper>

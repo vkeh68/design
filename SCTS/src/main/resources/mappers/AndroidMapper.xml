@@ -1,0 +1,557 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.AndroidMapper">
+
+	<insert id="insertCoupon_hold">
+		insert into coupon_hold
+		(USER_ID, COUPON_CODE,
+		COUPONHOLD_USE_AT, COUPONHOLD_DE)
+		values (#{user_id}, #{coupon_code},
+		'no', date_format(now(), '%Y-%m-%d'));
+	</insert>
+
+	<!-- 구매목록 -->
+
+	<resultMap id="billOne" type="java.util.HashMap">
+		<result property="goods_nm" column="goods_nm" />
+		<result property="purchgoods_qy" column="purchgoods_qy" />
+		<result property="COUPON_DSCNT" column="COUPON_DSCNT" />
+		<result property="price" column="price" />
+	</resultMap>
+
+	<resultMap id="recommandProduct" type="java.util.HashMap">
+		<result property="goods_code" column="goods_code" />
+		<result property="goods_nm" column="goods_nm" />
+		<result property="goods_pc" column="goods_pc" />
+	</resultMap>
+
+	<resultMap id="settleInfo" type="java.util.HashMap">
+		<result property="bill_code" column="bill_code" />
+		<result property="setle_mth_code" column="setle_mth_code" />
+		<result property="setle_mth_nm" column="setle_mth_nm" />
+		<result property="stprc" column="stprc" />
+	</resultMap>
+
+
+	<!-- APP -->
+	<select id="billList" resultType="BillVO">
+		select * from bill where
+		user_id = #{user_id} and date(bill.BILL_ISSU_DE) >=
+		date(subdate(curDate(), INTERVAL #{day} DAY))
+	</select>
+
+	<select id="billOne" resultMap="billOne">
+		select g.GOODS_NM as goods_nm,
+		pg.purchsgoods_qy as purchsgoods_qy, if(isnull(pg.coupon_code), 'X',
+		c.COUPON_DSCNT) as COUPON_DSCNT,
+		sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY -
+		if(isnull(pg.COUPON_CODE), 0, if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing '%' from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) as price
+		from purchase_goods pg left outer join
+		coupon c on pg.COUPON_CODE =
+		c.COUPON_CODE, goods g, bill b
+		where
+		g.goods_code = pg.goods_code and b.BILL_CODE = pg.BILL_CODE and
+		pg.bill_code = #{bill_code}
+		group by pg.bill_code, pg.goods_code
+	</select>
+
+	<select id="settleInfo" resultMap="settleInfo">
+		select b.BILL_CODE as
+		bill_code, sm.setle_mth_code as setle_mth_code, sm.setle_mth_nm as
+		setle_mth_nm, si.stprc as stprc
+		from bill b, settlement_method sm,
+		settlement_information si
+		where b.user_id = #{user_id} and
+		sm.setle_mth_code = si.setle_mth_code and b.BILL_CODE = si.bill_code
+		and b.bill_code = #{bill_code}
+		order by b.bill_code
+	</select>
+
+
+	<!-- 추천상품 -->
+
+	<select id="recommandProduct" resultMap="recommandProduct">
+		select
+		g.GOODS_CODE as
+		goods_code, g.GOODS_NM as goods_nm, g.GOODS_PC as goods_pc
+		from
+		purchase_goods pg, goods g, user u, bill b
+		where g.GOODS_CODE =
+		pg.GOODS_CODE and u.user_id = b.user_id and
+		pg.BILL_CODE = b.BILL_CODE
+		and
+		floor((year(curDate()) - date_format(u.USER_BRTHDY, '%Y') + 1)/10)
+		=
+		(select floor((year(curDate()) - date_format(user.USER_BRTHDY, '%Y')
+		+ 1)/10)
+		from
+		user where user_id = #{user_id}) and
+		u.USER_SEXDSTN =
+		(select
+		user.USER_SEXDSTN from user where user_id = #{user_id}) and
+		u.USER_MRRG_AT = (select user.USER_MRRG_AT from user where user_id =
+		#{user_id})
+		group by g.GOODS_CODE, u.USER_SEXDSTN,
+		floor((year(curDate()) - date_format(u.USER_BRTHDY, '%Y') + 1)/10)
+		order by sum(pg.PURCHSGOODS_QY) desc
+		limit 0, 10
+	</select>
+
+
+	<!-- 쿠폰 바구니 들고있는 목록 -->
+	<select resultType="CouponVO" id="couponList">
+		select * from coupon_hold ch,
+		coupon c where
+		ch.user_id = #{user_id} and
+		ch.COUPONHOLD_USE_AT = 'no'
+		and ch.coupon_code = c.coupon_code and
+		c.COUPON_END_DE >= now()
+	</select>
+
+	<delete id="delCouponBasket">
+		delete from coupon_hold
+		where user_id = #{user_id}
+		and
+		coupon_code = #{coupon_code};
+
+	</delete>
+
+
+	<select id="productSearch" resultType="goodsVO">
+
+		select g.* from goods g, supply_goods sg where g.goods_code = sg.goods_code and 
+		g.goods_nm like concat('%', #{productName}, '%')
+		and sg.bhf_code = #{bhf_code};
+	</select>
+
+	<!-- 고객에게 쿠폰 전송 -->
+	<select id="selectSendAndroidCoupon" resultType="CouponVO"
+		parameterType="java.util.HashMap">
+		select
+		*
+		from
+		coupon
+		where
+		COUPON_CODE IN
+		<foreach collection="coupon_code_Array" item="item" index="index"
+			separator="," open="(" close=")">
+
+			#{item.coupon_code}
+		</foreach> and coupon_end_de >= now()
+		order by rand()
+		limit 0,1
+	</select>
+
+	<select id="scanCoupon_hold" resultType="java.lang.Integer"
+		parameterType="java.util.HashMap">
+
+		select
+		count(*)
+		from
+		coupon_hold
+		where
+		USER_ID = #{user_id}
+		and
+		COUPONHOLD_USE_AT = 'no'
+		and
+		COUPON_CODE IN
+		<foreach collection="coupon_code_Array" item="item" index="index"
+			separator="," open="(" close=")">
+
+			#{item.coupon_code}
+		</foreach>
+	</select>
+
+	<select id="TileCoupon_code" resultType="java.util.HashMap"
+		parameterType="java.util.HashMap">
+		select cgc.COUPON_CODE as coupon_code
+		from
+		coupon_goods_creation cgc
+		where
+		GOODS_CODE IN (
+			select g.GOODS_CODE
+			from
+			goods g, purchase_goods pg, bill b
+			where
+			g.DETAILCTGRY_CODE = (
+				select DETAILCTGRY_CODE
+				from
+				detail_category_location
+				where
+				TILE_CODE = (
+					select TILE_CODE
+					from
+					tile
+					where
+					BEACON_CODE = (
+						select BEACON_CODE
+						from
+						beacon
+						where
+						BEACON_MJR =
+						#{beacon_mjr}
+						and
+						BEACON_MNR = #{beacon_mnr} )
+				)
+			) and g.goods_code = pg.GOODS_CODE and b.BILL_CODE = pg.BILL_CODE
+			and b.USER_ID = #{user_id} 
+			and b.BHF_CODE = (select bhf_code
+						from
+						beacon
+						where
+						BEACON_MJR =
+						#{beacon_mjr}
+						and
+						BEACON_MNR = #{beacon_mnr})
+			and 
+			cgc.bhf_code = (select bhf_code
+						from
+						beacon
+						where
+						BEACON_MJR =
+						#{beacon_mjr}
+						and
+						BEACON_MNR =  #{beacon_mnr})
+		)
+		
+		
+		union all
+		select cdc.coupon_code as coupon_code
+		from
+		coupon_detailcategory_creation cdc, goods g, purchase_goods pg,
+		bill b
+		where
+		cdc.DETAILCTGRY_CODE = (
+			select DETAILCTGRY_CODE from
+			detail_category_location
+			where TILE_CODE = (select
+			TILE_CODE from
+			tile
+			where BEACON_CODE = (
+				select BEACON_CODE
+				from beacon
+				where
+				BEACON_MJR =
+						#{beacon_mjr}
+						and
+						BEACON_MNR =  #{beacon_mnr}	)
+			)
+		) and cdc.DETAILCTGRY_CODE = g.DETAILCTGRY_CODE and
+		pg.BILL_CODE = b.BILL_CODE and pg.GOODS_CODE = g.GOODS_CODE
+		and b.USER_ID =#{user_id} and
+		b.BHF_CODE = (select bhf_code
+						from
+						beacon
+						where
+						BEACON_MJR =
+						#{beacon_mjr}
+						and
+						BEACON_MNR =  #{beacon_mnr})
+		and
+		cdc.bhf_code = (select bhf_code
+						from
+						beacon
+						where
+						BEACON_MJR =
+						#{beacon_mjr}
+						and
+						BEACON_MNR =  #{beacon_mnr})			
+	</select>
+
+
+	<select id="eventList" resultType="java.util.HashMap">
+		select e.bbsctt_code as
+		bbsctt_code, date_format(e.event_begin_de, '%Y-%m-%d') as
+		event_begin_de, date_format(e.event_end_de, '%Y-%m-%d') as
+		event_end_de,
+		b.bbsctt_sj as bbsctt_sj from event e, bbsctt b where
+		e.bbsctt_code =
+		b.bbsctt_code and e.event_end_de >= now()
+	</select>
+
+
+	<select id="eventOne" resultType="java.util.HashMap">
+		select e.bbsctt_code as
+		bbsctt_code, date_format(e.event_begin_de, '%Y-%m-%d') as
+		event_begin_de, date_format(e.event_end_de, '%Y-%m-%d') as
+		event_end_de,
+		b.bbsctt_sj as bbsctt_sj,
+		b.bbsctt_cn as bbsctt_cn from
+		event e, bbsctt b where
+		e.bbsctt_code =
+		b.bbsctt_code and e.bbsctt_code
+		= #{bbsctt_code};
+
+	</select>
+
+	<update id="updateToken">
+		update user
+		set token = #{token}
+		where user_id =
+		#{user_id}
+	</update>
+
+
+	<select id="androidLoginUser" resultType="int">
+		select count(*)
+		from
+		user
+		where
+		USER_ID = #{user_id} and USER_PASSWORD = #{user_password}
+	</select>
+
+
+	<select resultType="int" id="checkUser">
+		select count(user_id)
+		from user
+		where
+		user_id = #{user_id}
+	</select>
+
+	<select resultType="int" id="point">
+		select point_amount from point
+		where
+		user_id = #{user_id}
+	</select>
+
+
+
+	<select id="fcmCoupon" resultType="java.util.HashMap">
+		select
+		c.COUPON_CODE as
+		coupon_code, c.COUPON_NM as coupon_nm, c.COUPON_CNTNTS as
+		coupon_cntnts,
+		c.COUPON_DSCNT as coupon_dscnt, c.COUPON_BEGIN_DE as
+		coupon_begin_de,
+		c.COUPON_END_DE as coupon_end_de
+		from
+		purchase_goods pg,
+		goods g, user
+		u, bill b, coupon c, coupon_goods_creation cgc
+		where
+		g.GOODS_CODE =
+		pg.GOODS_CODE and u.user_id = b.user_id and
+		pg.BILL_CODE
+		= b.BILL_CODE
+		and c.COUPON_CODE = cgc.COUPON_CODE and pg.GOODS_CODE =
+		cgc.GOODS_CODE
+		and c.COUPON_END_DE >= now() and
+		floor((year(curDate()) -
+		date_format(u.USER_BRTHDY, '%Y') + 1)/10)
+		=
+		(select
+		floor((year(curDate()) - date_format(user.USER_BRTHDY, '%Y')
+		+ 1)/10)
+		from
+		user where user_id = #{user_id}) and
+		u.USER_SEXDSTN =
+		(select
+		user.USER_SEXDSTN from user where user_id = #{user_id}) and
+		u.USER_MRRG_AT = (select user.USER_MRRG_AT from user where user_id =
+		#{user_id})
+		group by g.GOODS_CODE, u.USER_SEXDSTN,
+		floor((year(curDate()) - date_format(u.USER_BRTHDY, '%Y') + 1)/10),
+		u.USER_MRRG_AT
+		order by sum(pg.PURCHSGOODS_QY) desc
+		limit 0, 10
+	</select>
+
+	<select id="userToken" resultType="String">
+		select token from user where
+		user_id = #{user_id}
+	</select>
+
+	<select id="confirmCoupon" resultType="int">
+		select count(*) from
+		coupon_hold where user_id = #{user_id} and coupon_code
+		= #{coupon_code}
+	</select>
+
+	<select id="basketInfo" resultType="java.util.HashMap">
+		select g.GOODS_CODE as
+		goods_code, g.GOODS_NM as goods_nm, g.GOODS_PC as goods_pc,
+		b.basket_qy as basket_qy
+		from goods g, basket b
+		where g.GOODS_CODE =
+		b.goods_code and b.user_id = #{user_id} and
+		b.bhf_code = #{bhf_code};
+	</select>
+
+
+	<update id="updateBasket_qy">
+		update basket
+		set basket_qy = #{basket_qy}
+		where
+		bhf_code = #{bhf_code} and goods_code = #{goods_code} and user_id =
+		#{user_id}
+	</update>
+
+
+	<insert id="insertBasket">
+		insert into basket(user_id, goods_code, bhf_code)
+		values(#{user_id}, #{goods_code}, #{bhf_code})
+	</insert>
+
+	<select id="oneBasketInfo" resultType="java.util.HashMap">
+		select g.GOODS_CODE as
+		goods_code, g.GOODS_NM as goods_nm, g.GOODS_PC as goods_pc,
+		b.basket_qy as basket_qy
+		from goods g, basket b
+		where g.GOODS_CODE =
+		b.goods_code and b.user_id = #{user_id} and
+		b.bhf_code = #{bhf_code}
+		and b.goods_code = #{goods_code}
+	</select>
+
+
+	<select id="knowBasket_qy" resultType="int">
+		select basket_qy from
+		basket where user_id = #{user_id} and
+		bhf_code = #{bhf_code} and
+		goods_code = #{goods_code}
+	</select>
+
+	<delete id="delBasket">
+		delete from basket where user_id = #{user_id} and
+		bhf_code = #{bhf_code} and goods_code = #{goods_code}
+	</delete>
+
+	<select id="userDeliveryAddr" resultType="String">
+		select user_adres from
+		user where user_id = #{user_id}
+	</select>
+
+	<select id="usableCoupon" resultType="java.util.HashMap">
+		select ch.COUPON_CODE as
+		coupon_code, cgc.goods_code as goods_code, c.COUPON_NM as coupon_nm,
+		c.COUPON_DSCNT as coupon_dscnt, c.coupon_end_de as coupon_end_de
+		from
+		coupon_hold ch, basket b, coupon c, coupon_goods_creation cgc
+		where
+		b.user_id = ch.USER_ID and cgc.COUPON_CODE = c.COUPON_CODE and
+		cgc.GOODS_CODE = b.goods_code and
+		ch.COUPON_CODE = cgc.COUPON_CODE and
+		ch.USER_ID = #{user_id}
+		and ch.COUPONHOLD_USE_AT = 'no' and
+		c.COUPON_END_DE >= now();
+	</select>
+
+
+	<insert id="insertBill">
+		insert into bill
+		(USER_ID, BHF_CODE, BILL_ISSU_DE,
+		BILL_STATUS, bill_totamt)
+		values
+		(#{user_id}, #{bhf_code}, now(),
+		'delivery', #{bill_totamt})
+	</insert>
+
+
+	<insert id="insertPurchase_goods" parameterType="java.util.Map">
+
+		insert into purchase_goods
+		(BILL_CODE, GOODS_CODE, COUPON_CODE,
+		PURCHSGOODS_QY)
+		values
+		<foreach collection="goodsList" item="goods" separator=",">
+			(
+			LAST_INSERT_ID(), #{goods.goods_code}, #{goods.coupon_code},
+			#{goods.purchsgoods_qy} )
+		</foreach>
+	</insert>
+
+	<insert id="insertDelivery">
+		insert into delivery values(last_insert_id(),
+		#{delivery_addr}, 'ready');
+	</insert>
+
+	<insert id="insertSettlement_information">
+		insert into settlement_information
+		(bill_code,
+		setle_mth_code, stprc)
+		values
+		(
+		last_insert_id(),
+		#{setle_mth_code},
+		#{stprc}
+		)
+	</insert>
+
+	<update id="updatePurchase_goods">
+		update purchase_goods
+		set coupon_code = null
+		where
+		coupon_code = 0
+	</update>
+
+	<update id="updateCoupon_hold">
+		update coupon_hold
+		set couponhold_use_at = 'yes'
+		where
+		user_id = #{user_id} and coupon_code = #{coupon_code}
+	</update>
+
+	<select id="getZone" resultType="java.util.Map">
+		select
+		t.TILE_CODE, t.TILE_NM,
+		t.TILE_CRDNT_X, t.TILE_CRDNT_Y, t.DRW_CODE
+		from
+		tile t,
+		beacon b
+		where
+		b.BEACON_MJR = #{beacon_mjr}
+		and
+		b.BEACON_MNR = #{beacon_mnr}
+		and
+		b.BEACON_CODE = t.BEACON_CODE
+	</select>
+
+	<select id="goodsOne" resultType="java.util.HashMap">
+		select g.GOODS_CODE as
+		goods_code,
+		g.GOODS_NM as goods_nm, g.GOODS_PC as goods_pc, t.tile_code as tile_code, t.tile_nm
+		as tile_nm, t.TILE_CRDNT_X as tile_crdnt_x,
+		t.TILE_CRDNT_Y as tile_crdnt_y, d.DRW_CODE as drw_code, d.DRW_FLPTH as drw_flpth,
+		fi.FLOORINFO_FLOOR as floorinfo_floor from goods g,
+		detail_category_location dcl, drawing
+		d,
+		tile t, floor_information fi
+		where g.DETAILCTGRY_CODE =
+		dcl.DETAILCTGRY_CODE and dcl.TILE_CODE =
+		t.TILE_CODE
+		and t.DRW_CODE = d.DRW_CODE and fi.DRW_CODE = d.DRW_CODE
+		and fi.BHF_CODE
+		= #{bhf_code}
+		and g.GOODS_CODE = #{goods_code};
+	</select>
+
+	<select id="tileList" resultType="java.util.HashMap">
+		select fi.DRW_CODE as drw_code, t.TILE_CODE as tile_code,
+		t.TILE_NM as tile_nm, t.TILE_CRDNT_X as tile_crdnt_x, t.TILE_CRDNT_Y
+		as tile_crdnt_y from floor_information fi, drawing d, tile t where
+		d.DRW_CODE = fi.DRW_CODE and t.DRW_CODE = d.DRW_CODE
+		and fi.BHF_CODE = #{bhf_code};
+		
+
+	</select>
+	
+	<select id="drawingList" resultType="java.util.HashMap">
+		select fi.DRW_CODE as drw_code, d.DRW_FLPTH as drw_flpth, 
+		fi.FLOORINFO_FLOOR as floorinfo_floor, fi.SIZE_X as size_x, fi.SIZE_Y as size_y
+		from floor_information fi, drawing d where
+		d.DRW_CODE = fi.DRW_CODE
+		and fi.BHF_CODE = #{bhf_code};
+	
+	</select>
+
+
+</mapper>

@@ -1,0 +1,651 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.BillMapper">
+
+	<insert id="insertBill">
+		insert into bill
+		(USER_ID, BHF_CODE, BILL_ISSU_DE, BILL_STATUS)
+		values
+		(#{user_id}, #{bhf_code}, now(), 'branch')
+	</insert>
+
+
+	<!-- Web 매출 -->
+	<resultMap id="yearSales" type="java.util.HashMap">
+		<result property="year" column="year" />
+		<result property="totalPrice" column="totalPrice" />
+	</resultMap>
+
+	<resultMap id="settleSalesInfo" type="java.util.HashMap">
+		<result property="year" column="year" />
+		<result property="setle_mth_nm" column="setle_mth_nm" />
+		<result property="totalPrice" column="totalPrice" />
+	</resultMap>
+
+	<resultMap id="daySales" type="java.util.HashMap">
+		<result property="bill_issu_de" column="bill_issu_de" />
+		<result property="totalPrice" column="totalPrice" />
+
+	</resultMap>
+
+
+	<resultMap id="productRank" type="java.util.HashMap">
+		<result property="goods_nm" column="goods_nm" />
+		<result property="goods_netIncome" column="goods_netIncome" />
+		<result property="totalPrice" column="totalPrice" />
+
+	</resultMap>
+
+
+	<resultMap id="productRankInfo" type="java.util.HashMap">
+		<result property="goods_nm" column="goods_nm" />
+		<result property="totalPurchsgoods_qy" column="totalPurchsgoods_qy" />
+		<result property="totalCouponCount" column="totalCouponCount" />
+		<result property="goods_netIncome" column="goods_netIncome" />
+		<result property="totalPrice" column="totalPrice" />
+
+	</resultMap>
+
+
+	<resultMap id="genderSales" type="java.util.HashMap">
+		<result property="goods_nm" column="goods_nm" />
+		<result property="totalPrice" column="totalPrice" />
+
+	</resultMap>
+
+
+	<!-- 연매출 그래프 -->
+	<select id="yearSales" resultMap="yearSales">
+		select
+		date_format((b.BILL_ISSU_DE), '%Y') as year, sum(b.BILL_TOTAMT) as
+		totalPrice
+		from bill b
+		where
+		(
+		b.BILL_ISSU_DE like concat(#{year}, '%')
+		or
+		b.BILL_ISSU_DE like concat(#{year}-1, '%')
+		or b.BILL_ISSU_DE like
+		concat(#{year}-2, '%')
+		or b.BILL_ISSU_DE like concat(#{year}-3, '%')
+		or
+		b.BILL_ISSU_DE like concat(#{year}-4, '%')
+		and b.bhf_code = #{bhf_code}
+		)
+		group by
+		date_format((b.BILL_ISSU_DE), '%Y');
+
+
+	</select>
+
+	<!-- 연매출 그래프 누를 시 월매출 -->
+	<select id="yearToMonth" resultMap="daySales">
+		select
+		date_format(b.BILL_ISSU_DE, '%Y-%m') as bill_issu_de,
+		sum(b.BILL_TOTAMT) as totalPrice
+		from bill b
+		where
+		date_format(b.BILL_ISSU_DE, '%Y-%m') between concat(#{year}, '-01')
+		and concat(#{year}, '-12') and b.bhf_code = #{bhf_code}
+		group by
+		date_format(b.BILL_ISSU_DE,
+		'%Y-%m')
+
+	</select>
+
+	<!-- 연매출 검색 -->
+	<select id="searchYear" resultMap="yearSales">
+
+		select
+		date_format((b.BILL_ISSU_DE), '%Y') as year, sum(b.BILL_TOTAMT) as
+		totalPrice
+		from bill b
+		where date_format((b.BILL_ISSU_DE), '%Y') between
+		#{year1} and #{year2} and b.bhf_code = #{bhf_code}
+		group by
+		date_format((b.BILL_ISSU_DE), '%Y');
+
+
+	</select>
+
+	<!-- 연도별 결제수단, 총매출 -->
+	<select id="settleSalesInfo" resultMap="settleSalesInfo">
+
+		select
+		date_format((b.BILL_ISSU_DE), '%Y') as year, sm.setle_mth_nm as
+		setle_mth_nm,
+		sum(si.stprc) as totalPrice
+		from bill b,
+		settlement_information si, settlement_method sm
+		where
+		date_format((b.BILL_ISSU_DE), '%Y') between #{year1} and #{year2}
+		and
+		b.BILL_CODE = si.bill_code and sm.setle_mth_code = si.setle_mth_code
+		and b.bhf_code = #{bhf_code}
+		group by date_format((b.BILL_ISSU_DE),
+		'%Y'), sm.setle_mth_code;
+
+
+	</select>
+
+
+	<!-- 일매출 -->
+	<select id="daySales" resultMap="daySales">
+		<![CDATA[
+		select date_format(b.BILL_ISSU_DE, '%Y-%M-%d')
+		as
+		bill_issu_de, sum(b.BILL_TOTAMT) as
+		totalPrice
+		from bill b
+		where (b.BILL_ISSU_DE <= now() and bill_issu_de >= subDate(now(),
+		Interval 7  DAY) and b.bhf_code = #{bhf_code})
+		group by date_format(b.BILL_ISSU_DE, '%Y-%M-%d');
+		]]>
+	</select>
+
+	<!-- 일매출 div 누를 시 일, 결제수단, 총매출 -->
+	<select id="daySalesSettleInfo" resultMap="settleSalesInfo">
+
+
+		select
+		b.BILL_ISSU_DE
+		as year, sm.setle_mth_nm as setle_mth_nm,
+		sum(si.stprc) as totalPrice
+		from bill b, settlement_information si, settlement_method
+		sm
+		where
+		b.BILL_ISSU_DE between subDate(curDate(),
+		Interval 7 DAY) and
+		curDate()
+		and
+		b.BILL_CODE = si.bill_code and sm.setle_mth_code =
+		si.setle_mth_code and b.bhf_code = #{bhf_code}
+		group by
+		b.BILL_ISSU_DE,
+		sm.setle_mth_code;
+
+	</select>
+
+	<!-- 일매출 검색시 그래프 -->
+	<select id="searchDaySales" resultMap="daySales">
+
+		select b.BILL_ISSU_DE
+		as
+		bill_issu_de, sum(b.BILL_TOTAMT) as
+		totalPrice from
+		bill b
+		where
+		b.BILL_ISSU_DE between #{date2} and #{date1} and b.bhf_code =
+		#{bhf_code}
+		group by
+		b.BILL_ISSU_DE;
+
+
+	</select>
+
+	<!-- 일매출 검색 시 일, 결제수단, 총매출 -->
+	<select id="daySettle" resultMap="settleSalesInfo">
+
+		select
+		b.BILL_ISSU_DE as year,
+		sm.setle_mth_nm as setle_mth_nm,
+		sum(si.stprc) as totalPrice
+		from bill
+		b, settlement_information si, settlement_method
+		sm
+		where b.BILL_ISSU_DE
+		between #{date2} and #{date1} and
+		b.BILL_CODE = si.bill_code and
+		sm.setle_mth_code = si.setle_mth_code and
+		sm.setle_mth_code =
+		#{setle_mth_code} and b.bhf_code = #{bhf_code}
+		group by b.BILL_ISSU_DE,
+		sm.setle_mth_code;
+
+	</select>
+
+	<!-- 월 매출 -->
+	<select id="monthSales" resultMap="daySales">
+		select
+		date_format(b.BILL_ISSU_DE, '%Y-%m') as bill_issu_de,
+		sum(b.BILL_TOTAMT) as totalPrice
+		from bill b
+		where
+		date_format(b.BILL_ISSU_DE, '%Y-%m') between #{month2} and #{month1}
+		and b.bhf_code = #{bhf_code}
+		group by date_format(b.BILL_ISSU_DE,
+		'%Y-%m')
+
+	</select>
+
+	<!-- 월 매출 월,결제수단, 총매출 -->
+	<select id="monthSalesSettleInfo" resultMap="settleSalesInfo">
+
+
+		select
+		date_format(b.BILL_ISSU_DE, '%Y-%m') as year, sm.setle_mth_nm as
+		setle_mth_nm, sum(si.stprc) as totalPrice
+		from bill b,
+		settlement_information si, settlement_method sm
+		where si.bill_code =
+		b.BILL_CODE and sm.setle_mth_code = si.setle_mth_code and
+		date_format(b.BILL_ISSU_DE, '%Y-%m') between #{month2} and #{month1}
+		and b.bhf_code = #{bhf_code}
+		<if test="setle_mth_code != 0">
+			and sm.setle_mth_code = #{setle_mth_code}
+		</if>
+
+		group by
+		date_format(b.BILL_ISSU_DE, '%Y-%m'), sm.setle_mth_nm;
+
+	</select>
+
+
+
+	<!-- 상품에 대한 총 매출, 순이익 그래프 -->
+
+	<select id="productRank" resultMap="productRank">
+		select g.GOODS_NM as
+		goods_nm,
+		sum(g.GOODS_PC
+		*
+		pg.PURCHSGOODS_QY -
+		if(isnull(pg.COUPON_CODE), 0, if(c.COUPON_DSCNT
+		like '%@%' escape
+		'@',
+		g.GOODS_PC * (trim(trailing '%' from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) as totalPrice,
+		(sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY -
+		if(isnull(pg.COUPON_CODE), 0, if(c.COUPON_DSCNT
+		like '%@%' escape
+		'@',
+		g.GOODS_PC * (trim(trailing '%' from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) - result.price *
+		sum(pg.purchsgoods_qy)) as
+		goods_netIncome
+		from purchase_goods pg left
+		outer join coupon c on
+		pg.COUPON_CODE =
+		c.COUPON_CODE, goods g, bill b,
+		(select sg.GOODS_CODE,
+		sum(sg.WRHOUSNG_QY) as wrhousing_qy,
+		sum(sg.PUCHAS_PC)
+		as puchas_pc,
+		ceil(sum(sg.PUCHAS_PC)/sum(sg.WRHOUSNG_QY)) as price
+		from goods g,
+		supply_goods sg
+		where g.GOODS_CODE = sg.GOODS_CODE and sg.bhf_code =
+		#{bhf_code}
+		group by
+		g.GOODS_CODE) as result
+		where g.goods_code =
+		pg.goods_code and
+		b.BILL_CODE = pg.BILL_CODE and
+		date_format(b.BILL_ISSU_DE, '%Y-%m') =
+		#{date}
+		and result.goods_code = pg.goods_code and b.bhf_code = #{bhf_code}
+		group
+		by
+		date_format(b.BILL_ISSU_DE, '%Y-%m'), pg.goods_code
+		order by
+		<if test="standard == 1">
+			totalPrice desc
+		</if>
+		<if test="standard == 2">
+			goods_netIncome desc
+		</if>
+
+		limit 0, 10;
+	</select>
+
+	<!-- 상품 랭킹 정보 -->
+	<select id="productRankInfo" resultMap="productRankInfo">
+		select g.GOODS_NM as goods_nm, sum(pg.PURCHSGOODS_QY) as
+		totalPurchsgoods_qy,
+		count(c.COUPON_CODE) as totalCouponCount,
+		sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY - if(isnull(pg.COUPON_CODE), 0,
+		if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing '%'
+		from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) as totalPrice,
+		(sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY - if(isnull(pg.COUPON_CODE), 0,
+		if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing '%'
+		from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) - result.price *
+		sum(pg.purchsgoods_qy)) as goods_netIncome
+		from purchase_goods pg left
+		outer join coupon c on pg.COUPON_CODE =
+		c.COUPON_CODE, goods g, bill b,
+		(select sg.GOODS_CODE, sum(sg.WRHOUSNG_QY) as wrhousing_qy,
+		sum(sg.PUCHAS_PC)
+		as puchas_pc,
+		ceil(sum(sg.PUCHAS_PC)/sum(sg.WRHOUSNG_QY)) as price
+		from goods g,
+		supply_goods sg
+		where g.GOODS_CODE = sg.GOODS_CODE and sg.bhf_code =
+		#{bhf_code}
+		group by
+		g.GOODS_CODE) as result
+		where g.goods_code =
+		pg.goods_code and
+		result.goods_code = pg.goods_code
+		and b.BILL_CODE =
+		pg.bill_code and
+		date_format(b.BILL_ISSU_DE,
+		'%Y-%m') = #{date} and
+		b.bhf_code = #{bhf_code}
+		group by
+		date_format(b.BILL_ISSU_DE, '%Y-%m'),
+		pg.goods_code
+		order
+		by
+		<if test="standard == 1">
+			totalPrice desc
+		</if>
+		<if test="standard == 2">
+			goods_netIncome desc
+		</if>
+
+		limit 0, 10;
+
+	</select>
+
+	<!-- 고객 선호 매출 -->
+	<select id="genderSales" resultMap="genderSales">
+		select g.GOODS_NM as
+		goods_nm,
+		sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY -
+		if(isnull(pg.COUPON_CODE), 0, if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing '%' from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) as totalPrice
+		from purchase_goods pg left outer join
+		coupon c on pg.COUPON_CODE =
+		c.COUPON_CODE, goods g, bill b, user u
+		where g.goods_code = pg.goods_code and b.BILL_CODE = pg.BILL_CODE and
+		b.USER_ID = u.USER_ID and
+		date_format(b.BILL_ISSU_DE, '%Y-%m') =
+		#{date} and u.USER_SEXDSTN = #{gender} and b.bhf_code = #{bhf_code}
+		group by
+		date_format(b.BILL_ISSU_DE, '%Y-%m'), pg.goods_code,
+		u.USER_SEXDSTN
+		order by totalPrice desc
+		limit 0, 10
+		;
+
+	</select>
+
+	<!-- 나이대별 고객 상품 선호 그래프 -->
+	<select id="ageSales" resultMap="productRank">
+
+		select g.GOODS_NM as goods_nm,
+		sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY -
+		if(isnull(pg.COUPON_CODE), 0,
+		if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing
+		'%' from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) as totalPrice,
+		(sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY -
+		if(isnull(pg.COUPON_CODE), 0, if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing '%' from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) - result.price *
+		sum(pg.purchsgoods_qy)) as
+		goods_netIncome
+		from purchase_goods pg left
+		outer join coupon c on
+		pg.COUPON_CODE =
+		c.COUPON_CODE, goods g, bill b,
+		user u,
+		(select
+		sg.GOODS_CODE, sum(sg.WRHOUSNG_QY) as wrhousing_qy,
+		sum(sg.PUCHAS_PC)
+		as puchas_pc,
+		ceil(sum(sg.PUCHAS_PC)/sum(sg.WRHOUSNG_QY)) as price
+		from
+		goods g, supply_goods sg
+		where g.GOODS_CODE = sg.GOODS_CODE and
+		sg.bhf_code = #{bhf_code}
+		group by
+		g.GOODS_CODE) as result
+		where
+		g.goods_code = pg.goods_code and
+		b.BILL_CODE = pg.BILL_CODE and
+		date_format(b.BILL_ISSU_DE, '%Y-%m') =
+		#{date} and b.USER_ID =
+		u.USER_ID and result.goods_code =
+		g.GOODS_CODE and b.bhf_code =
+		#{bhf_code}
+		and
+		<if test="age lte 40">
+			floor((year(curDate()) - date_format(u.USER_BRTHDY,
+			'%Y') +
+			1)/10)
+			*10 = #{age}
+		</if>
+
+		<if test="age gte 50">
+			floor((year(curDate()) - date_format(u.USER_BRTHDY,
+			'%Y') +
+			1)/10)*10 >= #{age}
+		</if>
+
+		<if test="gender != null">
+			<if test='gender.equals("m")'>
+				and u.USER_SEXDSTN = 'm'
+			</if>
+			<if test='gender.equals("w")'>
+				and u.USER_SEXDSTN = 'w'
+			</if>
+		</if>
+
+		group by date_format(b.BILL_ISSU_DE, '%Y-%m'),
+		pg.goods_code
+		<if test="age lte 40">
+			,floor((year(curDate()) - date_format(u.USER_BRTHDY,
+			'%Y')
+			+ 1)/10)
+		</if>
+		order by
+		<if test="standard == 1">
+			totalPrice desc
+		</if>
+		<if test="standard == 2">
+			goods_netIncome desc
+		</if>
+		limit 0, 10
+		;
+
+	</select>
+
+
+	<select id="ageSalesInfo" resultMap="productRankInfo">
+		select g.GOODS_NM as goods_nm,
+		sum(pg.PURCHSGOODS_QY) as
+		totalPurchsgoods_qy,
+		count(c.COUPON_CODE) as totalCouponCount,
+		sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY - if(isnull(pg.COUPON_CODE), 0,
+		if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing
+		'%'
+		from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) as totalPrice,
+		(sum(g.GOODS_PC *
+		pg.PURCHSGOODS_QY - if(isnull(pg.COUPON_CODE), 0,
+		if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		g.GOODS_PC * (trim(trailing '%'
+		from
+		c.COUPON_DSCNT)/100),
+		c.COUPON_DSCNT))) - result.price *
+		sum(pg.purchsgoods_qy)) as goods_netIncome
+		from purchase_goods pg left
+		outer join coupon c on pg.COUPON_CODE =
+		c.COUPON_CODE, goods g, bill b,
+		user u,
+		(select sg.GOODS_CODE, sum(sg.WRHOUSNG_QY) as wrhousing_qy,
+		sum(sg.PUCHAS_PC) as puchas_pc,
+		ceil(sum(sg.PUCHAS_PC)/sum(sg.WRHOUSNG_QY)) as price
+		from goods g,
+		supply_goods sg
+		where g.GOODS_CODE = sg.GOODS_CODE and sg.bhf_code =
+		#{bhf_code}
+		group by
+		g.GOODS_CODE) as result
+		where g.goods_code =
+		pg.goods_code and
+		b.BILL_CODE = pg.BILL_CODE and
+		date_format(b.BILL_ISSU_DE, '%Y-%m') =
+		#{date} and b.USER_ID =
+		u.USER_ID and result.goods_code =
+		g.GOODS_CODE and b.bhf_code =
+		#{bhf_code}
+		and
+		<if test="age lte 40">
+			floor((year(curDate()) - date_format(u.USER_BRTHDY,
+			'%Y') +
+			1)/10)
+			*10 = #{age}
+		</if>
+
+		<if test="age gte 50">
+			floor((year(curDate()) - date_format(u.USER_BRTHDY,
+			'%Y') +
+			1)/10)*10 >= #{age}
+		</if>
+
+		<if test="gender != null">
+			<if test='gender.equals("m")'>
+				and u.USER_SEXDSTN = 'm'
+			</if>
+			<if test='gender.equals("w")'>
+				and u.USER_SEXDSTN = 'w'
+			</if>
+		</if>
+
+		group by date_format(b.BILL_ISSU_DE, '%Y-%m'),
+		pg.goods_code
+		<if test="age lte 40">
+			,floor((year(curDate()) - date_format(u.USER_BRTHDY,
+			'%Y')
+			+ 1)/10)
+		</if>
+		order by
+		<if test="standard == 1">
+			totalPrice desc
+		</if>
+		<if test="standard == 2">
+			goods_netIncome desc
+		</if>
+		limit 0, 10
+		;
+
+	</select>
+
+	<select id="todaySales" resultType="int">
+		select
+		ifnull(sum(bill_totamt), 0) from
+		bill
+		where date_format(bill_issu_de, '%Y-%m-%d') =
+		date_format(now(),
+		'%Y-%m-%d') and bhf_code = #{bhf_code}
+
+
+	</select>
+
+	<select id="monthTotalSales" resultType="int">
+		select ifnull(sum(bill_totamt),0)
+		from bill
+		where date_format(bill_issu_de, '%Y-%m') = date_format(now(),
+		'%Y-%m') and bhf_code = #{bhf_code}
+
+	</select>
+	
+	<select id="monthlyTotalSale" resultType="BillVO">
+		select date_format(bill_issu_de, '%Y-%m') as date, ifnull(sum(bill_totamt),0) as totalSale
+		from bill
+		group by date_format(bill_issu_de, '%Y-%m')
+		order by date_format(bill_issu_de, '%Y-%m') desc limit 3;
+	</select>
+	
+	<select id="branchTotalSale" resultType="BillVO">
+		select a.bhf_code, b.BHF_CODE, date_format(b.bill_issu_de, '%Y-%m') as date, ifnull(sum(b.bill_totamt),0) as totalSale
+		from branch_office a, bill b
+		where a.bhf_code = b.bhf_code and b.bhf_code = #{bhf_code}
+		group by date_format(b.bill_issu_de, '%Y-%m')
+		order by date_format(b.bill_issu_de, '%Y-%m') desc limit 3;
+	</select>
+	
+
+	<!-- 총가격 업데이트 -->
+	<update id="totalPrice">
+
+		update	
+		bill,
+		(
+		select
+		sum(result.price) as bill_total
+		from
+		(
+		select
+		pg.BILL_CODE as bill_code,
+		g.GOODS_PC * pg.PURCHSGOODS_QY -
+		if(isnull(pg.COUPON_CODE), 0, if(c.COUPON_DSCNT
+		like '%@%' escape '@',
+		(g.GOODS_PC * (trim(trailing '%' from
+		c.COUPON_DSCNT)/100)),
+		c.COUPON_DSCNT)) as price
+		from
+		goods g, purchase_goods pg, bill b,
+		coupon c
+		where
+		g.GOODS_CODE = pg.GOODS_CODE
+		and
+		b.BILL_CODE = pg.BILL_CODE
+		and
+		b.BILL_CODE = LAST_INSERT_ID()
+		and
+		if(isnull(pg.COUPON_CODE), 1,
+		c.COUPON_CODE = pg.COUPON_CODE)
+		group by pg.BILL_CODE, pg.GOODS_CODE
+		)
+		as result
+		group by result.bill_code
+		) as total
+		set
+		bill_totamt =
+		total.bill_total
+		where
+		bill_code = LAST_INSERT_ID()
+	</update>
+
+
+
+
+
+
+</mapper>

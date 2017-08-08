@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="yjc.wdb.mapper.ReplyMapper">
+
+	<select id="listReply" resultType="ReplyVO">
+		select * from help_reply
+		where bno = #{bno}
+		order by rno desc
+	</select>
+	
+	<select id="criReply" resultType="ReplyVO">
+		select * from help_reply
+		where bno = #{bno}
+		order by rno desc
+		limit #{cri.pageStart}, #{cri.perPageNum}
+	</select>
+	
+	<select id="countReply" resultType="int">
+		select count(bno)
+		from help_reply
+		where bno = #{bno}
+	</select>
+	
+	<insert id="insertReply">
+		insert into help_reply(bno, replytext, replyer)
+		values(#{bno}, #{replytext}, 'asd')
+	</insert>
+	
+	<update id="updateReply">
+		update help_reply set
+		replytext = #{replytext}, updatedate = now()
+		where rno = #{rno}
+	</update>
+	
+	<delete id="deleteReply">
+		delete from help_reply
+		where rno = #{rno}	
+	</delete>
+</mapper>

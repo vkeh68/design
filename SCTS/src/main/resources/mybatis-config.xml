@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+    PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<typeAliases>		
+		
+		<typeAlias alias="BeaconVO" 						type="yjc.wdb.scts.bean.BeaconVO"></typeAlias>
+		<typeAlias alias="BillVO" 							type="yjc.wdb.scts.bean.BillVO"></typeAlias>
+		<typeAlias alias="Branch_officeVO" 					type="yjc.wdb.scts.bean.Branch_officeVO"></typeAlias>
+		<typeAlias alias="Coupon_holdVO" 					type="yjc.wdb.scts.bean.Coupon_holdVO"></typeAlias>
+		<typeAlias alias="CouponVO" 						type="yjc.wdb.scts.bean.CouponVO"></typeAlias>
+		<typeAlias alias="CourseVO" 						type="yjc.wdb.scts.bean.CourseVO"></typeAlias>
+		<typeAlias alias="Department_positionVO" 			type="yjc.wdb.scts.bean.Department_positionVO"></typeAlias>
+		<typeAlias alias="DepartmentVO" 					type="yjc.wdb.scts.bean.DepartmentVO"></typeAlias>
+		<typeAlias alias="Detail_category_locationVO" 		type="yjc.wdb.scts.bean.Detail_category_locationVO"></typeAlias>
+		<typeAlias alias="Detail_categoryVO" 				type="yjc.wdb.scts.bean.Detail_categoryVO"></typeAlias>
+		<typeAlias alias="DrawingVO" 						type="yjc.wdb.scts.bean.DrawingVO"></typeAlias>
+		<typeAlias alias="Employee_positionVO" 				type="yjc.wdb.scts.bean.Employee_positionVO"></typeAlias>
+		<typeAlias alias="EmployeeVO" 						type="yjc.wdb.scts.bean.EmployeeVO"></typeAlias>
+		<typeAlias alias="Floor_informationVO" 				type="yjc.wdb.scts.bean.Floor_informationVO"></typeAlias>
+		<typeAlias alias="GoodsVO" 							type="yjc.wdb.scts.bean.GoodsVO"></typeAlias>
+		<typeAlias alias="Large_classification_categoryVO"	type="yjc.wdb.scts.bean.Large_classification_categoryVO"></typeAlias>
+		<typeAlias alias="Purchase_goodsVO" 				type="yjc.wdb.scts.bean.Purchase_goodsVO"></typeAlias>
+		<typeAlias alias="TileVO" 							type="yjc.wdb.scts.bean.TileVO"></typeAlias>
+		<typeAlias alias="UserVO" 							type="yjc.wdb.scts.bean.UserVO"></typeAlias>
+		<typeAlias alias="EventVO" 							type="yjc.wdb.scts.bean.EventVO"></typeAlias>
+		<typeAlias alias="StockVO" 							type="yjc.wdb.scts.bean.StockVO"></typeAlias>
+		<typeAlias alias="HelpVO" 							type="yjc.wdb.scts.bean.HelpVO"></typeAlias> 
+		<typeAlias alias="ReplyVO" 							type="yjc.wdb.scts.bean.ReplyVO"></typeAlias>
+	</typeAliases>
+</configuration>

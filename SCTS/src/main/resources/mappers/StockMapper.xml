@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.StockMapper">
+	
+ <sql id="search">
+		<if test="check == 0"> <!-- 상품명만 검색 -->
+			AND g.goods_nm LIKE CONCAT('%', #{keyword},'%')
+		</if>
+ 		<if test="check == 1"> <!-- 모든사항 기입  -->
+				AND g.goods_nm LIKE CONCAT('%',#{keyword},'%')
+				AND d.lclasctgry_code LIKE(#{searchType})
+				AND s.invntry_qy BETWEEN #{startAmount} AND #{endAmount}
+		</if>
+		<if test="check == 2"> <!-- 상품명, 카테고리  -->
+			AND g.goods_nm LIKE CONCAT('%',#{keyword},'%')
+			AND d.lclasctgry_code LIKE(#{searchType})
+		</if>
+		<if test="check == 3"><!-- 상품명, 재고량  -->
+			AND g.goods_nm LIKE CONCAT('%',#{keyword},'%')
+			AND s.invntry_qy BETWEEN #{startAmount} AND #{endAmount}
+		</if>
+		<if test="check == 4"> <!-- 재고량만 검색  -->
+			AND s.invntry_qy BETWEEN #{startAmount} AND #{endAmount}
+		</if>
+		<if test="check == 5"><!-- 카테고리, 재고량  -->
+			AND d.lclasctgry_code LIKE(#{searchType})
+			AND s.invntry_qy BETWEEN #{startAmount} AND #{endAmount}
+		</if>
+		<if test="check == 6"><!-- 카테고리만 검색  -->
+			AND d.lclasctgry_code LIKE(#{searchType})
+		</if> 
+</sql>
+
+ 	<select id="selectStockList" resultType="stockVO">
+ 		<![CDATA[
+		select s.user_id, e.suply_entrps_nm, s.wrhousng_de, e.suply_entrps_telno, g.goods_code, g.goods_nm, s.distb_de, s.invntry_qy, s.bhf_code
+		from supply_goods s, supply_enterprise e, goods g, detail_category d
+		where s.goods_code = g.goods_code
+		AND g.detailctgry_code = d.detailctgry_code
+		AND s.user_id = e.user_id
+		AND bhf_code = #{bhf_code}
+		]]>
+		<include refid="search"></include> 
+		order by d.lclasctgry_code
+		limit #{pageStart}, #{perPageNum}
+	</select>
+	
+	<select id="countSearch" resultType="int">
+		select count(s.bhf_code)
+		from supply_goods s, goods g, detail_category d
+		where s.goods_code = g.goods_code
+		AND g.detailctgry_code = d.detailctgry_code
+		AND bhf_code = #{bhf_code}
+		<include refid="search"></include> 
+	</select>
+	
+	<insert id="insertStock">
+		insert into supply_goods (user_id, goods_code, bhf_code, wrhousng_qy, wrhousng_de, puchas_pc, puchas_de, distb_de, invntry_qy)
+		values(#{user_id}, #{goods_code}, #{bhf_code}, #{wrhousng_qy}, #{wrhousng_de}, #{puchas_pc}, #{puchas_de}, #{distb_de}, #{invntry_qy})
+	</insert>
+	
+	<select id="selectEnter" resultType="StockVO">
+		select suply_entrps_nm, user_id
+		from supply_enterprise;
+	</select>
+		
+	<delete id="deleteStock">
+		delete from supply_goods where user_id = #{user_id} AND goods_code = #{goods_code};
+	</delete>
+</mapper>

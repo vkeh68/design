@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:websocket="http://www.springframework.org/schema/websocket"
+	xsi:schemaLocation="http://www.springframework.org/schema/websocket http://www.springframework.org/schema/websocket/spring-websocket-4.3.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.1.xsd
+		http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+		
+	<!-- Root Context: defines shared resources visible to all other web components -->
+	<!-- DataSource Spring Bean 등록 -->
+	<bean id="dataSource"
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<!-- setUrl()이라는 내장 함수 호출하고 value의 값을 설정해준다. -->
+
+	 	<!-- <property name="driverClassName" value="net.sf.log4jdbc.sql.jdbcapi.DriverSpy" /> 
+		<property name="url" value="jdbc:log4jdbc:mysql://zseil.cafe24.com:3306/zseil" /> 
+		<property name="username" value="zseil" /> 
+		<property name="password" value="qweqwe!2" /> -->
+
+		<!-- 서버 업로드용 db 소스 -->
+		<!-- <property name="driverClassName" value="com.mysql.jdbc.Driver" /> 
+		<property name="url" value="jdbc:mysql://localhost:3306/zseil" /> 
+		<property name="username" value="zseil" /> 
+		<property name="password" value="qweqwe!2" /> -->
+
+		<!-- 노트북 테스트용 db --><!-- 
+		<property name="driverClassName" value="org.mariadb.jdbc.Driver" />
+		<property name="url" value="jdbc:mariadb://localhost:33060/3MS" /> -->
+		<!-- <property name="url" value="jdbc:log4jdbc:mariadb://localhost:33060/3MS" /> -->
+	  	<property name="driverClassName" value="net.sf.log4jdbc.sql.jdbcapi.DriverSpy" />
+		<property name="url" value="jdbc:log4jdbc:mariadb://127.0.0.1:33060/3MS?useSSL=false&amp;serverTimezone=UTC" />
+		<property name="username" value="root" />
+		<property name="password" value="1234" />
+
+	</bean>
+
+	<!-- SqlSessionFactory Spring Bean 등록 : DataSource를 참조함 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:/mybatis-config.xml" />
+		<!-- MyBatis 설정 파일 경로 설정 -->
+		<property name="mapperLocations" value="classpath:mappers/**/*Mapper.xml" />
+		<!-- MyBatis를 사용하면 sql문을 소스코드에 적지 않는다. mapper 파일에 sql문처럼 적음 -->
+	</bean>
+
+	<!-- SqlSession Spring Bean 등록 -->
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate"
+		destroy-method="clearCache">
+		<constructor-arg name="sqlSessionFactory" ref="sqlSessionFactory"></constructor-arg>
+	</bean>
+	 
+
+	<!-- transaction Manager 추가 -->
+ 	<bean id="transactionManager"
+ 	class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+ 	<property name="dataSource" ref="dataSource"></property>
+ 	</bean>
+ 	
+ 	<tx:annotation-driven />
+ 	
+
+</beans>

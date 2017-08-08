@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.PosMapper">
+	<!-- 쿠폰 적용 우선순위는 무조건 상품! -->
+	<!-- 상품의 쿠폰 업데이트 -->
+	<update id="coupon_goods">
+
+		select pg.BILL_CODE, pg.GOODS_CODE, g.GOODS_NM,
+		ch.coupon_code
+		from coupon_hold ch, bill b, purchase_goods pg,
+		coupon_detailcategory_creation cdc, detail_category dc,goods g, coupon
+		where ch.USER_ID = #{user_id} and ch.COUPONHOLD_USE_AT = 'no' and
+		dc.DETAILCTGRY_CODE = g.DETAILCTGRY_CODE and dc.DETAILCTGRY_CODE =
+		cdc.DETAILCTGRY_CODE and
+		g.GOODS_CODE = pg.GOODS_CODE and
+		cdc.COUPON_CODE = coupon.coupon_code and ch.COUPON_CODE =
+		coupon.coupon_code
+		and b.BILL_CODE = pg.BILL_CODE and b.USER_ID
+		=#{user_id};
+
+	</update>
+
+	<!-- 상품카테고리의 쿠폰 업데이트 -->
+	<update id="coupon_detail_category">
+		update purchase_goods pg,
+		( select ch.coupon_code as COUPON_CODE,
+		g.GOODS_CODE as goods_code
+		from
+		coupon_hold ch, bill b, purchase_goods pg, coupon_goods_creation cc,
+		goods g, coupon
+		where ch.USER_ID = #{user_id} and ch.COUPONHOLD_USE_AT
+		= 'no' and g.GOODS_CODE =
+		pg.GOODS_CODE and
+		g.GOODS_CODE = cc.goods_code
+		and
+		cc.COUPON_CODE = coupon.coupon_code and ch.COUPON_CODE =
+		coupon.coupon_code
+		and b.BILL_CODE = pg.BILL_CODE and b.USER_ID =
+		#{user_id}) as pgc
+		set pg.COUPON_CODE = pgc.coupon_code where
+		pg.GOODS_CODE =
+		pgc.goods_code;
+	</update>
+
+
+
+</mapper>

@@ -1,0 +1,41 @@
+* {
+	font-family: 'Malgun Gothic';
+	font-size: 15px;
+}
+
+th, td {
+	text-align: center;
+}
+
+.navbar-search {
+	border: 1px solid;
+	background-color: #FFFFFF;
+	width: 100%;
+	padding: 10px;
+	margin-bottom: 15px;
+}
+ 
+.navbar-form{
+	display:inline;
+	width:300px;	
+}
+
+.search-btn {
+	border: 1px solid;
+	background-color: #E5EFF7;
+}
+
+.navbar-form .form-control{
+	display:inline;
+	width:350px;	
+}
+
+.navbar-inner{
+	margin-bottom:10px;
+}
+
+#stockCategory{
+	width: 150px; 
+	height: 29px;
+	margin-left: 25px;
+}

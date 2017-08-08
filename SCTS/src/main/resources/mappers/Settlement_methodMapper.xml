@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.Settlement_methodMapper">
+
+<!-- 결제 수단 테이블에 데이터 삽입 -->
+<insert id="insertSettlement_method">
+insert into settlement_method
+	(SETLE_MTH_NM)
+values
+	(#{setle_mth_nm})
+</insert>
+
+<!-- 결제 정보(실제 계산서 삽입 후 해당 계산서의 결제 정보를 삽입 하는 것) 삽입 -->
+<insert id="insertSettlement_infomation" parameterType="java.util.Map">
+insert into settlement_information
+	(bill_code, setle_mth_code, stprc)
+values
+	(
+		last_insert_id(),
+		#{setle_mth_code},
+		#{stprc}
+	)
+</insert>
+
+<select id="getSettlement" resultType="java.util.HashMap">
+select * from settlement_method
+</select>
+
+</mapper>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.Purchase_goodsMapper">
+
+<insert id="insertPurchase_goods">
+insert into purchase_goods
+	(BILL_CODE, GOODS_CODE, COUPON_CODE, PURCHSGOODS_QY)
+values (#{bill_code}, #{goods_code}, #{coupon_code}, #{purchsgoods_qy})
+</insert>
+
+<insert id="insertPurchase_goodsList" parameterType="java.util.Map">
+
+insert into purchase_goods
+	(BILL_CODE, GOODS_CODE, COUPON_CODE, PURCHSGOODS_QY)
+values
+<foreach collection="goodsList" item="goods" separator=",">
+        ( LAST_INSERT_ID(), #{goods.goods_code}, #{goods.coupon_code}, #{goods.purchsgoods_qy} )
+</foreach>
+</insert>
+
+<!-- <update id="">
+</update>
+
+<delete id="" >
+</delete>
+
+<select id="" resultType="">
+</select> -->
+
+</mapper>

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.CouponMapper">
+	<sql id="persent">
+		<if test="yPersent == 'per'.toString()">
+			CONCAT(#{coupon_dscnt},'%'),
+		</if>
+
+		<if test="yPersent == 'won'.toString()">
+			#{coupon_dscnt},
+		</if>
+
+	</sql>
+	<!-- 쿠폰 등록 -->
+	<insert id="insertCoupon">
+		insert into coupon
+		(COUPON_NM, COUPON_CNTNTS,
+		COUPON_DSCNT,
+		COUPON_BEGIN_DE, COUPON_END_DE)
+		values (#{coupon_nm}, #{coupon_cntnts},
+		<include refid="persent"></include>
+		#{coupon_begin_de}, #{coupon_end_de})
+	</insert>
+
+	<!-- 쿠폰에 할인할 물품 적용 -->
+	<insert id="applyCoupon">
+		insert into coupon_goods_creation
+		(COUPON_CODE,
+		GOODS_CODE, COUPON_CO, BHF_CODE)
+		values (last_insert_id(),
+		#{goods_code},
+		#{coupon_co}, #{bhf_code})
+	</insert>
+
+
+	<insert id="applyDetailCoupon">
+		insert into coupon_detailcategory_creation
+		(COUPON_CODE,
+		detailctgry_code, COUPON_CO, BHF_CODE)
+		values
+		(last_insert_id(), #{detailctgry_code},
+		#{coupon_co}, #{bhf_code})
+	</insert>
+
+	<!-- 전체 쿠폰 리스트 출력 -->
+	<select id="selectCouponList" resultType="CouponVO">
+		select c.coupon_code,
+		c.coupon_nm, c.coupon_cntnts, c.coupon_dscnt, c.coupon_begin_de,
+		c.coupon_end_de, g.bhf_code
+		from coupon c, coupon_goods_creation g
+		where c.coupon_code = g.coupon_code
+		AND (g.bhf_code = #{bhf_code}
+		OR
+		g.bhf_code = 1)
+		group by g.COUPON_CODE
+		union
+		select c.coupon_code,
+		c.coupon_nm, c.coupon_cntnts, c.coupon_dscnt, c.coupon_begin_de,
+		c.coupon_end_de, cdc.bhf_code
+		from coupon c,
+		coupon_detailcategory_creation cdc
+		where c.coupon_code =
+		cdc.coupon_code
+		AND (cdc.bhf_code = #{bhf_code}
+		OR
+		cdc.bhf_code = 1)
+		group by cdc.COUPON_CODE
+
+	</select>
+
+	<select id="couponAdList" resultType="CouponVO">
+		select c.coupon_code,
+		c.coupon_nm, c.coupon_cntnts, c.coupon_dscnt,
+		c.coupon_begin_de,
+		c.coupon_end_de, g.bhf_code
+		from coupon c,
+		coupon_goods_creation g
+		where
+		c.coupon_code = g.coupon_code
+		AND
+		(g.COUPON_CODE = last_insert_id())
+		union
+		select c.coupon_code,
+		c.coupon_nm, c.coupon_cntnts,
+		c.coupon_dscnt, c.coupon_begin_de,
+		c.coupon_end_de, cdc.bhf_code
+		from
+		coupon c,
+		coupon_detailcategory_creation cdc
+		where c.coupon_code =
+		cdc.coupon_code
+		AND (cdc.COUPON_CODE = last_insert_id())
+	</select>
+
+	<!-- 특정 쿠폰 정보 출력 -->
+	<select id="selectCouponOne" resultType="CouponVO">
+		select c.COUPON_CODE, c.COUPON_NM, c.COUPON_CNTNTS, trim(trailing '%' from c.COUPON_DSCNT) as coupon_dscnt, c.COUPON_BEGIN_DE, c.COUPON_END_DE,
+		cgc.bhf_code, cgc.coupon_co
+		from coupon c, coupon_goods_creation cgc
+		where c.coupon_code = #{coupon_code} and cgc.bhf_code = #{bhf_code}
+		and c.COUPON_CODE =
+		cgc.COUPON_CODE
+		union
+		select  c.COUPON_CODE, c.COUPON_NM, c.COUPON_CNTNTS, trim(trailing '%' from c.COUPON_DSCNT), c.COUPON_BEGIN_DE, c.COUPON_END_DE,
+		cdc.bhf_code,
+		cdc.coupon_co
+		from coupon c,
+		coupon_detailcategory_creation cdc
+		where
+		c.coupon_code = #{coupon_code} and cdc.bhf_code = #{bhf_code} and
+		c.COUPON_CODE =
+		cdc.COUPON_CODE
+		
+	</select>
+
+	<!-- 물품 적용에 들어갈 쿠폰 코드 가져오기 -->
+	<select id="selectCode" resultType="int">
+		select MAX(coupon_code) as
+		max_code
+		from coupon
+	</select>
+
+	<!-- 쿠폰 수정 -->
+	<update id="updateCoupon">
+		update coupon set coupon_nm =#{coupon_nm},
+		coupon_cntnts =#{coupon_cntnts},
+		coupon_dscnt =<include refid="persent"></include>
+		coupon_begin_de = #{coupon_begin_de}, coupon_end_de = #{coupon_end_de}
+		where coupon_code = #{coupon_code};
+	</update>
+
+	<!-- 쿠폰 삭제 -->
+	<delete id="deleteCoupon">
+		delete from coupon where coupon_code =
+		#{coupon_code};
+	</delete>
+
+	<delete id="delCouponBasket">
+		delete from coupon_hold
+		where 
+		coupon_code = #{coupon_code};
+	</delete>
+
+
+	<delete id="deleteCoupon_goods_creation">
+		delete from coupon_goods_creation where coupon_code =
+		#{coupon_code}
+		<if test="bhf_code != 1">
+			and bhf_code = #{bhf_code}
+		</if>
+
+	</delete>
+
+	<delete id="deleteCoupon_detailcategory_creation">
+
+		delete from coupon_detailcategory_creation where coupon_code =
+		#{coupon_code}
+		<if test="bhf_code != 1">
+			and bhf_code = #{bhf_code}
+		</if>
+
+	</delete>
+
+	<select id="selectAllbranchOffice" resultType="Branch_officeVO">
+		select * from
+		branch_office
+		where bhf_code != 1
+	</select>
+
+	<select id="searchingBranchOffice" resultType="Branch_officeVO">
+		select * from
+		branch_office
+		where bhf_code != 1 and
+		bhf_nm like concat
+		('%',#{bhf_nm},'%')
+	</select>
+
+	<select id="selectAllCategory" resultType="java.util.HashMap">
+		select
+		detailctgry_code, detailctgry_nm from detail_category
+	</select>
+	
+	
+	<insert id="modifyGoodsCoupon">
+		insert into coupon_goods_creation
+		(COUPON_CODE,
+		GOODS_CODE, COUPON_CO, BHF_CODE)
+		values (#{coupon_code},
+		#{goods_code},
+		#{coupon_co}, #{bhf_code})
+	</insert>
+
+
+	<insert id="modifyDetailCoupon">
+		insert into coupon_detailcategory_creation
+		(COUPON_CODE,
+		detailctgry_code, COUPON_CO, BHF_CODE)
+		values
+		(#{coupon_code}, #{detailctgry_code},
+		#{coupon_co}, #{bhf_code})
+	</insert>
+
+</mapper>

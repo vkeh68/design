@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.PositionMapper">
+
+	<!-- 생성된 위치데이터를 db에 저장 현재 고객정보는 빠져 있음 -->
+	<insert id="insertPosition"> 
+		insert into position 
+			<!-- 해당부분 넣으면 왠지 모르겟는데 sql 에러남. 진짜 걍 왜그런지 모르겟음 해당 sql로 디비에 직접 넣으면 넣어지는데 ibatis로만 안들어감.
+				current_Timedate 이 이름때문에 문제 생기는 듯함. 해당 이름을 cur_timedate로 바꾸고 sql을 실행하면 전혀 문제 없음.-->
+			<!-- (major, minor, user_id, current_Timedate, stay_Time) -->
+		values
+			(#{major}, #{minor}, #{user_id}, #{current_Timedate}, #{stay_Time})
+	</insert>
+
+
+	<select id="selectPosition" resultType="PositionVO">
+		select *
+		from position
+		order by current_Timedate desc
+		limit 0,1
+	</select>
+
+	<!-- 나이 연령대에 따른 존 지나간 횟수 구분할 db쿼리문 작성 -->
+	<!-- 이쿼리문 현재 연령대 별이 아닌, 아예 10, 11 등 모두 구분됨 해당 하는 걸 아직 안고침 -->
+	<!-- 1인 1방문 기준임, 한명이 한곳을 여러번 갓다고 해서 안됨 -->
+	<select id="visit_count" resultType="java.util.HashMap">
+		select u.age, t.tile_name,
+		p.major, p.minor, count(DISTINCT u.user_id) visit_count
+		from position
+		p, tile t, user u
+		where p.user_id = u.user_id
+		and t.major = p.major
+		and
+		t.minor = p.minor
+		group by u.age, t.tile_name
+		order by u.age,
+		t.tile_name;
+	</select>
+
+	<!-- 방문율 전체 고객들중, 또는 매장에 방문한 고객들 중에서 해당 존을 지나간 퍼센테이지를 구하여 받아올 쿼리문 -->
+	<!-- 날짜 별로 해당 존에 방문하는 고객들의 수를 반환하는 쿼리문 -->
+	<!-- 현재 오늘 날짜만 됨. INTERVAL 0 DAY 값을 조정함으로써 언제 날짜를 구할 것인지 조정 가능 -->
+	<select id="probability" resultType="java.util.HashMap">
+		select t.tile_name,
+		count(DISTINCT user_id) tile_visit, c.cnt total_visit,
+		count(DISTINCT user_id)/c.cnt probability
+		from position p, tile t, (select
+		count(DISTINCT user_id) cnt
+		from position
+		where date(current_timedate) >= date(subdate(now(), INTERVAL 0 DAY)) ) c
+		where t.major = p.major
+		and t.minor = p.minor
+		group by p.major, p.minor
+		order by t.tile_name;
+	</select>
+
+	<!-- 해당 존에서 고객들이 평균적으로 머무는 시간을 구하여 반환할 수 있는 쿼리문 -->
+	<select id="avgStay" resultType="java.util.HashMap">
+		select t.tile_name, p.major,
+		p.minor, avg(p.stay_time) avg, count(*) cnt
+		from position p, tile t
+		where t.major = p.major
+		and t.minor = p.minor
+		group by major, minor
+		order by t.tile_name;
+	</select>
+	
+	<select id="todayCount" resultType="integer">
+		select count(DISTINCT user_id)
+		from position
+		where date(current_timedate) >= date(subdate(now(), INTERVAL 0 DAY))
+	</select>
+
+</mapper>

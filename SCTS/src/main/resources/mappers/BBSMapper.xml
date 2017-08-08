@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 게시판에 관한 모든 디비를 여기 넣을 것이다! -->
+<mapper namespace="yjc.wdb.mapper.BBSMapper">
+
+	<insert id="bbscttInsert">
+		insert into bbsctt(bbsctt_sj, bbsctt_cn)
+		values(#{bbsctt_sj}, #{bbsctt_cn})
+	</insert>
+
+	<insert id="eventInsert">
+		insert into event
+		values(last_insert_id(),
+		#{event_begin_de}, #{event_end_de});
+	</insert>
+
+	<insert id="bbsctt_writingInsert">
+		insert into bbsctt_writing(bhf_code, user_id,
+		bbsctgry_code, bbsctt_code, bbsctt_rgsde)
+		values(#{bhf_code},
+		#{user_id}, 1, last_insert_id(), now());
+	</insert>
+
+	<!-- 캘린더위의 이벤트 일정 표시 -->
+	<resultMap id="viewCalendar" type="java.util.HashMap">
+		<result property="bbsctt_code" column="bbsctt_code" />
+		<result property="bbsctt_sj" column="bbsctt_sj" />
+		<result property="bbsctt_cn" column="bbsctt_cn" />
+		<result property="event_begin_de" column="event_begin_de" />
+		<result property="event_end_de" column="event_end_de" />
+	</resultMap>
+
+	<select id="viewCalendar" resultMap="viewCalendar">
+		select bc.bbsctt_code as
+		bbsctt_code, bc.bbsctt_sj as bbsctt_sj, bc.bbsctt_cn as bbsctt_cn,
+		e.event_begin_de as event_begin_de, e.event_end_de as event_end_de
+		from bbsctt bc, event e, bbsctt_writing bw
+		where bc.bbsctt_code =
+		e.bbsctt_code and bw.bbsctt_code = e.bbsctt_code and (bw.bhf_code =
+		#{bhf_code} or bw.bhf_code = 1)
+	</select>
+
+	<select id="eventOne" resultMap="viewCalendar">
+		select bc.bbsctt_code as
+		bbsctt_code, bc.bbsctt_sj as bbsctt_sj,
+		bw.bhf_code as bhf_code,
+		bc.bbsctt_cn as bbsctt_cn,
+		e.event_begin_de as event_begin_de,
+		e.event_end_de as event_end_de
+		from
+		bbsctt bc, event e, bbsctt_writing bw
+		where
+		bc.bbsctt_code = e.bbsctt_code
+		and bw.BBSCTT_CODE = e.BBSCTT_CODE and
+		bc.bbsctt_code = #{code}
+
+	</select>
+
+	<update id="updateEvent">
+		update event
+		set event_begin_de = #{event_begin_de},
+		event_end_de = #{event_end_de}
+		where bbsctt_code = #{bbsctt_code}
+	</update>
+
+	<update id="updateBbsctt">
+		update bbsctt
+		set bbsctt_sj = #{bbsctt_sj}, bbsctt_cn
+		= #{bbsctt_cn}
+		where bbsctt_code = #{bbsctt_code}
+	</update>
+
+	<delete id="deleteEvent">
+		delete from event where bbsctt_code = #{bbsctt_code}
+	</delete>
+
+	<delete id="deleteBbsctt">
+		delete from bbsctt where bbsctt_code = #{bbsctt_code}
+	</delete>
+
+	<delete id="deleteBbscttWriting">
+		delete from bbsctt_writing where bbsctt_code =
+		#{bbsctt_code}
+	</delete>
+
+
+	<delete id="deleteNoti">
+		delete from notification where bbsctt_code =
+		#{bbsctt_code}
+	</delete>
+
+	<select id="listEvent" resultMap="viewCalendar">
+		select bc.bbsctt_code as
+		bbsctt_code, bc.bbsctt_sj as bbsctt_sj, bc.bbsctt_cn as bbsctt_cn,
+		e.event_begin_de as event_begin_de, e.event_end_de as event_end_de
+		from bbsctt bc, event e
+		where bc.bbsctt_code = e.bbsctt_code and
+		date_format(e.event_begin_de, '%Y-%m-%d') between #{date1} and
+		#{date2}
+
+	</select>
+
+
+	<select id="eventNotification" resultType="java.util.HashMap">
+		<![CDATA[
+		 select bc.bbsctt_code as bbsctt_code, bc.bbsctt_sj as bbsctt_sj from bbsctt bc,
+		  event e, bbsctt_writing bw where bc.bbsctt_code = e.bbsctt_code and bw.bbsctt_code = e.bbsctt_code 
+		  and date_format(e.event_begin_de, '%Y-%m-%d') >= date_format(now(), '%Y-%m-%d') and date_format(e.event_begin_de, '%Y-%m-%d') <= date_format(date_add(now(), interval +7 day), '%Y-%m-%d')
+		  and (bw.bhf_code = #{bhf_code} or bw.BHF_CODE = 1);
+		]]>
+	</select>
+
+	<select id="notification" resultType="java.util.HashMap">
+		select n.ntcn_code as
+		ntcn_code, n.sender as sender,
+		n.reciever as reciever, n.bbsctt_code as
+		bbsctt_code, b.bbsctt_sj as bbsctt_sj,
+		to_days(date_format(e.event_begin_de, '%Y-%m-%d')) -
+		to_days(date_format(now(), '%Y-%m-%d')) as dateCha from notification
+		n, bbsctt b, event
+		e
+		where n.bbsctt_code = b.BBSCTT_CODE and
+		e.BBSCTT_CODE = n.bbsctt_code and b.BBSCTT_CODE = e.BBSCTT_CODE
+		and
+		(n.reciever = #{reciever})
+		order by 6 desc
+	</select>
+
+
+	<insert id="insertNoti">
+		insert into notification(sender, reciever, n_status,
+		bbsctt_code) values(#{sender},
+		#{reciever}, 'no', #{bbsctt_code})
+	</insert>
+
+
+	<select id="notiCnt" resultType="int">
+		select count(*) from
+		notification n,
+		event e
+	  	where n.n_status = 'no' and e.BBSCTT_CODE = n.bbsctt_code 
+	  	and (n.reciever = #{reciever}) and e.event_begin_de >= now();
+	</select>
+
+
+	<update id="updateNoti">
+		update notification set n_status = 'yes' where
+		ntcn_code = #{ntcn_code}
+	</update>
+	
+	<select id="allBranch_office" resultType="Branch_officeVO">
+		select bhf_code from branch_office
+	</select>
+
+
+</mapper>

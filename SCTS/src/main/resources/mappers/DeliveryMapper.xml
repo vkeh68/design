@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.DeliveryMapper">
+
+	<select id="deliveryList" resultType="java.util.HashMap">
+		select b.BILL_CODE as
+		bill_code, b.USER_ID as user_id,
+		b.bill_issu_de as bill_issu_de,
+		b.BILL_TOTAMT as bill_totamt
+		from bill b, delivery d
+		where b.BILL_CODE =
+		d.bill_code and b.BHF_CODE = #{bhf_code} and
+		d.delivery_state =
+		'ready';
+	</select>
+
+	<select id="delivery_detail" resultType="java.util.HashMap">
+		select b.bill_code as
+		bill_code, b.USER_ID as user_id, g.GOODS_NM as goods_nm, g.goods_pc as
+		goods_pc, pg.PURCHSGOODS_QY as purchsgoods_qy,
+		b.BILL_TOTAMT as
+		bill_totamt,
+		d.delivery_addr as delivery_addr from purchase_goods pg,
+		goods g, bill b, delivery d
+		where d.bill_code = #{bill_code} and
+		pg.GOODS_CODE = g.GOODS_CODE and
+		b.BILL_CODE = d.bill_code and
+		d.bill_code = pg.BILL_CODE;
+	</select>
+
+	<update id="updateDelivery">
+		update delivery
+		set delivery_state = 'complete'
+		where bill_code = #{bill_code}
+
+	</update>
+
+	<select id="deliveryNoti" resultType="java.util.HashMap">
+		select b.bill_code as bill_code, b.USER_ID as user_id from bill b, delivery d
+		where b.BILL_CODE = d.bill_code and b.bhf_code = #{bhf_code} and d.delivery_state =
+		'ready';
+	</select>
+
+</mapper>

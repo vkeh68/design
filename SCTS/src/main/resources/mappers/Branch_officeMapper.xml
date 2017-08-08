@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.Branch_officeMapper">
+
+<insert id="insertBranch_office">
+insert into branch_office
+	(BHF_NM, BHF_ADRES, BHF_TELNO)
+values (#{bhf_nm}, #{bhf_adres}, #{bhf_telno})
+</insert>
+
+<select id="selectBranchNameList" resultType="java.util.HashMap">
+select
+	bhf_code, bhf_nm
+from
+	branch_office
+</select>
+
+<select id="selectBranchOffice" resultType="Branch_officeVO">
+select
+	bhf_code, bhf_nm, bhf_telno
+from
+	branch_office
+</select>
+
+<select id="likeBranchInfoList" resultType="Branch_officeVO">
+	select
+		bhf_code, bhf_nm, bhf_telno
+	from
+		branch_office
+	where
+		BHF_NM
+	like concat
+	('%',#{bhf_nm},'%')
+</select>
+
+<select id="selectBranchCode" resultType="java.lang.Integer">
+	select
+		bhf_code
+	from
+		branch_office
+	where
+		bhf_code =	(
+						select
+							bhf_code
+						from
+							beacon
+						where
+							beacon_mjr = #{beacon_mjr}
+						and
+							beacon_mnr = #{beacon_mnr}
+					)
+</select>
+
+<select id="gradeBranchList" resultType="Branch_officeVO">
+	select b.bhf_code, a.bhf_nm, sum(b.bill_totamt) as totalPrice
+	from branch_office a, bill b
+	where a.bhf_code = b.bhf_code
+	group by bhf_code
+	order by totalPrice desc limit 0,10;
+</select>
+
+<!-- <select id="listOfDaySales">
+	select date_format((b.bill_issu_de), '%D') as day, b.bhf_code, a.bhf_nm, sum(b.bill_totamt) as totalPrice
+	from branch_office a, bill b
+	where b.bhf_code = #{bhf_code}
+	group by day
+	order by day desc limit 7
+</select>-->
+<!-- <update id="">
+</update>
+
+<delete id="" >
+</delete>
+
+<select id="" resultType="">
+</select>
+ -->
+</mapper>

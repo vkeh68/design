@@ -1,0 +1,578 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.CourseMapper">
+
+	<!-- <insert id="insertCourse"> insert into COURSE (USER_ID, TILE_CODE, 
+		COURS_STAY_TIME, COURS_PASNG_TIME) values (#{user_id}, #{tile_code}, #{cours_stay_time}, 
+		#{cours_pasng_time}) </insert> -->
+
+	<!-- 안드로이드에서 비콘정보 쏴줄 때 서버 측에서 비콘 정보 인설트용 쿼리 -->
+	<insert id="insertCourse">
+		insert into course
+		(USER_ID, TILE_CODE,
+		COURS_PASNG_TIME)
+		values
+		(
+		#{user_id},
+		(
+		select
+		t.TILE_CODE
+		from
+		tile t,
+		beacon b
+		where
+		b.BEACON_MJR = #{beacon_mjr}
+		and
+		b.BEACON_MNR =
+		#{beacon_mnr}
+		and
+		b.BEACON_CODE = t.BEACON_CODE
+		) ,
+		#{cours_pasng_time}
+		);
+	</insert>
+
+	<update id="updateStayTime">
+		update
+		course
+		set
+		COURS_STAY_TIME = #{cours_stay_time}
+		where
+		USER_ID = #{user_id}
+		and
+		TILE_CODE = (
+		select
+		TILE_CODE
+		from
+		tile
+		where
+		BEACON_CODE = (
+		select
+		BEACON_CODE
+		from
+		beacon
+		where
+		BEACON_MJR =
+		#{beacon_mjr}
+		and
+		BEACON_MNR = #{beacon_mnr}
+		)
+		)
+		and
+		COURS_PASNG_TIME =
+		#{cours_pasng_time}
+		and
+		COURS_STAY_TIME is null
+	</update>
+
+	<!-- 오늘 방문자 수 계산 -->
+	<select id="selectTodayVisitCnt" resultType="int">
+		select
+		count(DISTINCT c.user_id)
+		from
+		course c, tile t, beacon b
+		where
+		date(c.COURS_PASNG_TIME) >=
+		date(subdate(now(), INTERVAL 0 DAY))
+		and t.TILE_CODE = c.TILE_CODE and b.BEACON_CODE = t.BEACON_CODE
+		and b.BHF_CODE = #{bhf_code};
+	</select>
+	
+	<select id="tileTodayVisitCnt" resultType="int">
+	
+	select
+		count(DISTINCT user_id)
+		from
+		course
+		where tile_code =(
+			select tile_code
+			from tile
+			where drw_code = #{drw_code} and
+			tile_crdnt_x = #{tile_crdnt_x} and
+			tile_crdnt_y = #{tile_crdnt_y} 
+		) and
+		date(COURS_PASNG_TIME) >=
+		date(subdate(now(), INTERVAL 0 DAY))
+	
+	
+	</select>
+
+	<select id="monthAvgVisitor" resultType="int">
+		select sum(result.count)
+		from
+		(select
+		count(DISTINCT user_id) as count
+		from course c, tile t, beacon b
+		where t.TILE_CODE = c.TILE_CODE and b.BEACON_CODE = t.BEACON_CODE
+		and b.BHF_CODE = #{bhf_code} and 
+		date_format(COURS_PASNG_TIME, '%Y-%m') = date_format(now(), '%Y-%m')
+		) result;
+	</select>
+
+	<select id="probability" resultType="java.util.HashMap">
+		select
+		t.tile_nm,
+		count(DISTINCT user_id) tile_visit,
+		c.cnt total_visit,
+		count(DISTINCT
+		user_id)/c.cnt probability
+		from
+		position p,
+		tile t,
+		(
+		select
+		count(DISTINCT
+		user_id) cnt
+		from
+		position
+		where
+		date(current_timedate) >=
+		date(subdate(now(), INTERVAL 0 DAY))
+		) c
+		where
+		t.major = p.major
+		and
+		t.minor = p.minor
+		group by
+		p.major, p.minor
+		order by
+		t.tile_name;
+	</select>
+
+	<!-- 해당 선택된 타일에 방문한 방문자 수와 매장 전체에 방문자 수를 계산한 뒤 해당 타일에 전체 방문자 중 몇퍼센트가 방문햇는지 
+		가져오는 쿼리문 ** 현재 이 쿼리문은 당일날의 데이터만 가져오게 되어 있음 ** -->
+	<!-- <select id="tileProbability" resultType="java.util.HashMap">
+		 select C.tile_visit, T.total_visit, (C.tile_visit / T.total_visit) 
+			AS probability from ( select count(DISTINCT user_id) AS tile_visit from course 
+			where TILE_CODE = ( select TILE_CODE from tile where DRW_CODE = #{drw_code} 
+			and TILE_CRDNT_X = #{tile_crdnt_x} and TILE_CRDNT_Y = #{tile_crdnt_y} ) and 
+			date(COURS_PASNG_TIME) >= date(subdate(CURDATE(), INTERVAL 0 DAY)) ) C, ( 
+			select count(DISTINCT user_id) AS total_visit from course where date(COURS_PASNG_TIME) 
+			>= date(subdate(curDate(), INTERVAL 0 DAY)) ) T 
+
+	</select> -->
+	
+	
+ 
+	<select id="tileGender" resultType="java.util.HashMap">
+		SELECT
+		(C.tile_visit / T.total_visit) * 100 AS probability, C.user_sexdstn AS user_sexdstn
+		FROM
+		(SELECT COUNT(course.user_id) AS tile_visit, user.USER_SEXDSTN as
+		user_sexdstn FROM course, user, tile, beacon
+		WHERE course.user_id = user.user_id AND DATE(course.COURS_PASNG_TIME) >=
+		DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY)) and tile.TILE_CODE = course.tile_code and beacon.BEACON_CODE = tile.BEACON_CODE
+		and beacon.bhf_code = #{bhf_code}
+		group by user.USER_SEXDSTN
+		) C,
+		(SELECT COUNT(user_id) AS total_visit
+		FROM course, tile, beacon
+		WHERE DATE(course.COURS_PASNG_TIME) >= DATE(SUBDATE(CURDATE(), INTERVAL
+		#{day} DAY)) and tile.TILE_CODE = course.tile_code and beacon.BEACON_CODE = tile.BEACON_CODE
+		and beacon.bhf_code = #{bhf_code}) T;
+
+
+	</select>
+
+	<select id="tileAge"  resultType="java.util.HashMap">
+		SELECT
+		(C.tile_visit / T.total_visit) * 100 AS probability, (C.agegroup) * 10 as agegroup
+		FROM
+		(SELECT COUNT(course.user_id) AS tile_visit, floor((year(curDate()) -
+		date_format(USER_BRTHDY, '%Y') +
+		1)/10) as agegroup FROM course, user, tile, beacon
+		WHERE course.user_id = user.user_id AND DATE(COURS_PASNG_TIME) >=
+		DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY)) and tile.TILE_CODE = course.tile_code and beacon.BEACON_CODE = tile.BEACON_CODE
+		and beacon.bhf_code = #{bhf_code}
+		group by agegroup
+		) C,
+		(SELECT COUNT(user_id) AS total_visit
+		FROM course, tile, beacon
+		WHERE DATE(COURS_PASNG_TIME) >= DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY))
+		and tile.TILE_CODE = course.tile_code and beacon.BEACON_CODE = tile.BEACON_CODE
+		and beacon.bhf_code = #{bhf_code})
+		T;
+
+	</select>
+	
+	<select id="oneTileAvgTime" resultType="java.util.HashMap">
+	
+		SELECT if(isnull(avg(course.COURS_STAY_TIME)), 0 , avg(course.COURS_STAY_TIME)) as avgTime, tile.tile_nm as tile_nm FROM course, tile where DATE(course.COURS_PASNG_TIME) >=
+		DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY)) 
+		and course.TILE_CODE =
+		(
+		SELECT
+		TILE_CODE
+		FROM
+		tile
+		WHERE
+		DRW_CODE = #{drw_code} AND
+		TILE_CRDNT_X = #{tile_crdnt_x} AND
+		TILE_CRDNT_Y = #{tile_crdnt_y}
+		) and tile.tile_code = course.tile_code;
+	
+	</select>
+
+	<select id="oneTileGender" resultType="java.util.HashMap">
+		SELECT
+		(C.tile_visit / T.total_visit) * 100 AS probability, C.user_sexdstn AS user_sexdstn
+		FROM
+		(SELECT COUNT(course.user_id) AS tile_visit, user.USER_SEXDSTN as
+		user_sexdstn FROM course, user
+		WHERE course.user_id = user.user_id AND DATE(course.COURS_PASNG_TIME) >=
+		DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY)) 
+		and TILE_CODE =
+		(
+		SELECT
+		TILE_CODE
+		FROM
+		tile
+		WHERE
+		DRW_CODE = #{drw_code} AND
+		TILE_CRDNT_X = #{tile_crdnt_x} AND
+		TILE_CRDNT_Y = #{tile_crdnt_y}
+		)
+		group by user.USER_SEXDSTN
+		) C,
+		(SELECT COUNT(user_id) AS total_visit
+		FROM course
+		WHERE DATE(course.COURS_PASNG_TIME) >= DATE(SUBDATE(CURDATE(), INTERVAL
+		#{day} DAY))) T;
+	
+	
+	</select>
+	
+	<select id="oneTileAge"  resultType="java.util.HashMap">
+		SELECT
+		(C.tile_visit / T.total_visit) * 100 AS probability, (C.agegroup) * 10 as agegroup
+		FROM
+		(SELECT COUNT(distinct course.user_id) AS tile_visit, floor((year(curDate()) -
+		date_format(USER_BRTHDY, '%Y') +
+		1)/10) as agegroup FROM course, user
+		WHERE course.user_id = user.user_id AND DATE(COURS_PASNG_TIME) >=
+		DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY)) and
+		TILE_CODE =
+		(
+		SELECT
+		TILE_CODE
+		FROM
+		tile
+		WHERE
+		DRW_CODE = #{drw_code} AND
+		TILE_CRDNT_X = #{tile_crdnt_x} AND
+		TILE_CRDNT_Y = #{tile_crdnt_y}
+		)
+		group by agegroup
+		) C,
+		(SELECT COUNT(distinct user_id) AS total_visit
+		FROM course
+		WHERE DATE(COURS_PASNG_TIME) >= DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY)))
+		T;
+
+	</select>
+	
+	<select id="tileTotal"  resultType="java.util.HashMap">
+			
+		SELECT C.tile_visit as tile_visit, 
+		(C.tile_visit / T.total_visit) * 100 AS probability, C.cours_pasng_time as cours_pasng_time
+		FROM
+		(SELECT COUNT(distinct course.user_id) AS tile_visit,  
+		<if test="day == 7">
+		date_format(COURS_PASNG_TIME, '%Y-%m-%d')
+		</if>
+		<if test="day == 90">
+		date_format(COURS_PASNG_TIME, '%Y-%m')
+		</if>
+		 as cours_pasng_time FROM course
+		WHERE DATE(COURS_PASNG_TIME) >=
+		DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY)) and
+		TILE_CODE =
+		(
+		SELECT
+		TILE_CODE
+		FROM
+		tile
+		WHERE
+		DRW_CODE = #{drw_code} AND
+		TILE_CRDNT_X = #{tile_crdnt_x} AND
+		TILE_CRDNT_Y = #{tile_crdnt_y}
+		)
+		group by
+		<if test="day == 7">
+			date_format(COURS_PASNG_TIME, '%Y-%m-%d')
+	
+		</if>
+		<if test="day == 90">
+		date_format(COURS_PASNG_TIME, '%Y-%m')
+		</if>
+		) C,
+		(SELECT COUNT(distinct user_id) AS total_visit,  
+		<if test="day == 7">
+			date_format(COURS_PASNG_TIME, '%Y-%m-%d')
+	
+		</if>
+		<if test="day == 90">
+			date_format(COURS_PASNG_TIME, '%Y-%m')
+	
+		</if> as cours_pasng_time
+		FROM course
+		WHERE DATE(COURS_PASNG_TIME) >= DATE(SUBDATE(CURDATE(), INTERVAL #{day} DAY))
+		group by 
+		<if test="day == 7">
+			date_format(COURS_PASNG_TIME, '%Y-%m-%d')
+	
+		</if>
+		<if test="day == 90">
+		date_format(COURS_PASNG_TIME, '%Y-%m')
+		</if>
+		)
+		T
+		where C.cours_pasng_time = T.cours_pasng_time;
+		
+	
+	</select>
+	
+	<select id="testTileColor" resultType="java.util.HashMap">
+<!-- 	select
+		t.TILE_CRDNT_X, t.TILE_CRDNT_Y
+	from
+		course c,
+		tile t
+	where
+		c.COURS_STAY_TIME is null
+	and
+		c.TILE_CODE = t.TILE_CODE -->
+
+	select
+		t.TILE_CRDNT_X, t.TILE_CRDNT_Y
+	from
+		course c,
+		tile t,
+		beacon b
+	where
+		c.COURS_STAY_TIME is null
+	and
+		c.TILE_CODE = t.TILE_CODE
+	and
+		b.BEACON_CODE = t.BEACON_CODE
+	and
+		date(c.COURS_PASNG_TIME) >= date(subdate(now(), INTERVAL 0 DAY))
+	and
+		b.BHF_CODE = #{bhf_code};
+	</select>
+	
+
+	<!-- 하나의 타일(해당 타일)에 방문한 방문자들의 아이디, 이름, 연령대, 성별, 혼인여부를 가져오는 쿼리문 ** 현재 이 쿼리문은 
+		당일날의 데이터만 가져오게 되어 있음 ** -->
+	<!-- <select id="tileUserinfo" resultType="java.util.HashMap">
+		select
+		U.user_id, U.user_nm,
+		U.agegroup, U.user_sexdstn, U.user_mrrg_at
+		from ( select user_id from
+		course where TILE_CODE = (
+		select
+		TILE_CODE
+		from
+		tile
+		where
+		DRW_CODE =
+		#{drw_code}
+		and
+		TILE_CRDNT_X = #{tile_crdnt_x}
+		and
+		TILE_CRDNT_Y =
+		#{tile_crdnt_y}
+		)
+		and
+		date(COURS_PASNG_TIME) >= date(subdate(CURDATE(),
+		INTERVAL 0 DAY))
+		) C,
+
+		(
+		select
+		USER_ID, USER_NM, floor((year(curDate()) -
+		date_format(USER_BRTHDY, '%Y') +
+		1)/10) agegroup,
+		USER_SEXDSTN,
+		USER_MRRG_AT
+		from
+		user
+		) U
+
+		where
+		C.user_id = U.user_id
+	</select> -->
+
+
+	<!-- <update id=""> </update> <delete id="" > </delete> <select id="" resultType=""> 
+		</select> -->
+
+	<select id="zoneTypeMap" resultType="java.util.HashMap">
+
+select
+	t.TILE_CODE, t.TILE_NM, t.TILE_CRDNT_X, t.TILE_CRDNT_Y, 
+	ifnull((co.tile_visit / ct.total_visit), 0) AS probability
+	
+from
+	(
+		select
+			TILE_CODE, TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y
+		from
+			tile 
+		where
+			drw_code = #{drw_code}
+	) t
+LEFT OUTER JOIN
+	(
+		select
+			TILE_CODE, count(DISTINCT user_id) AS tile_visit
+		from
+			course
+		where
+			TILE_CODE IN	(
+								select
+									TILE_CODE
+								from
+									tile
+								where
+									DRW_CODE = #{drw_code}
+							)
+		and
+			date(COURS_PASNG_TIME) >= date(subdate(CURDATE(), INTERVAL 30 DAY))
+		group by
+			TILE_CODE
+	) co
+ON
+	t.TILE_CODE = co.TILE_CODE,
+
+	(
+		select
+			count(DISTINCT user_id) AS total_visit
+		from
+			course
+		where
+			TILE_CODE IN	(
+								select
+									TILE_CODE
+								from
+									tile
+								where
+									DRW_CODE = #{drw_code}
+							)
+		and
+			date(COURS_PASNG_TIME) >= date(subdate(curDate(), INTERVAL 30 DAY))
+	) ct
+order by probability desc, TILE_CODE asc;
+	</select>
+	
+	<select id="categoryTypeMap" resultType="java.util.HashMap">
+
+select
+	tc.TILE_CODE, tc.TILE_NM, tc.TILE_CRDNT_X, tc.TILE_CRDNT_Y, 
+	tc.DETAILCTGRY_NM,
+	tc.LCLASCTGRY_NM, tc.LCLASCTGRY_CODE, tc.LCLASCTGRY_COLOR,
+	ifnull(c.category_visit, 0),
+	t.total_visit,
+	ifnull((c.category_visit / t.total_visit), 0) AS probability
+from
+	(
+		select
+			count(DISTINCT user_id) AS total_visit
+		from
+			course
+		where
+			date(COURS_PASNG_TIME) >= date(subdate(curDate(), INTERVAL 30 DAY))
+	) t,
+	
+	(		
+		select
+			t.TILE_CODE, t.TILE_NM, t.TILE_CRDNT_X, t.TILE_CRDNT_Y, 
+			dcl.DETAILCTGRY_CODE, dc.DETAILCTGRY_NM, 
+			lcc.LCLASCTGRY_NM, lcc.LCLASCTGRY_CODE, lcc.LCLASCTGRY_COLOR
+		from
+			detail_category_location dcl,
+			(
+				select
+					TILE_CODE, TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y
+				from
+					tile 
+				where
+					drw_code = #{drw_code}
+			) t,
+			detail_category dc,
+			large_classification_category lcc
+			
+		where
+			dcl.TILE_CODE = t.TILE_CODE
+		and
+			dc.DETAILCTGRY_CODE = dcl.DETAILCTGRY_CODE
+		and
+			lcc.LCLASCTGRY_CODE = dc.LCLASCTGRY_CODE
+		order by
+			t.TILE_CRDNT_X asc, t.TILE_CRDNT_Y asc
+	) tc
+LEFT OUTER JOIN
+	(
+		select
+			lcc.LCLASCTGRY_CODE , count(DISTINCT c.user_id) AS category_visit
+		from
+			course c,
+			detail_category_location dcl,
+			(
+				select
+					TILE_CODE, TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y
+				from
+					tile 
+				where
+					drw_code = #{drw_code}
+			) t,
+			detail_category dc,
+			large_classification_category lcc
+		where
+			dcl.TILE_CODE = t.TILE_CODE
+		and
+			t.TILE_CODE = c.TILE_CODE
+		and
+			dc.DETAILCTGRY_CODE = dcl.DETAILCTGRY_CODE
+		and
+			lcc.LCLASCTGRY_CODE = dc.LCLASCTGRY_CODE
+		and
+			date(c.COURS_PASNG_TIME) >= date(subdate(CURDATE(), INTERVAL 30 DAY))
+		group by
+			lcc.LCLASCTGRY_CODE
+	) c
+ON
+	tc.LCLASCTGRY_CODE = c.LCLASCTGRY_CODE
+	
+order by probability desc, TILE_CODE asc
+
+	</select>
+	
+
+<!-- 이거 실시간 방문자 전용!!!
+	현재 보고있는 매장 에서 쇼핑하고 있는 고객의 수를 파악 -->
+<select id="realTimeVisitor" resultType="int">
+select
+	count(DISTINCT c.user_id)
+from
+	beacon b,
+	course c,
+	tile t
+where
+	c.COURS_STAY_TIME is null
+and
+	c.TILE_CODE = t.TILE_CODE
+and
+	b.BEACON_CODE = t.BEACON_CODE
+and
+	date(c.COURS_PASNG_TIME) >= date(subdate(now(), INTERVAL 0 DAY))
+and
+	b.BHF_CODE = #{bhf_code};
+</select>
+	
+	
+</mapper>

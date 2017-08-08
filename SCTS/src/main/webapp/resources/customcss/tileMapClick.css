@@ -1,0 +1,27 @@
+@CHARSET "UTF-8";
+
+div.tile {
+ 	border-style: outset;
+	border-radius: 10px;
+	border-width: 1px; 
+	border-color: black;
+	text-align: center;
+	color: black;
+	text-vertical-align: middle;
+	
+}
+
+
+
+div.mouseover {
+	/* background-color: rgba(250, 226, 71); */
+	border-width: 3px; 
+	border-style: inset;
+}
+
+div.active {
+	/* background-color: rgba(250, 226, 71);
+	opacity: 0.8; */
+	border-width: 5px; 
+	border-style: inset;
+}

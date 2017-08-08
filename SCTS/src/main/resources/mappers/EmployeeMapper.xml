@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.EmployeeMapper">
+
+<insert id="insertEmployee">
+insert into employee
+	(USER_ID, EMP_IHIDNUM, EMP_ANSLRY, EMP_ACNUTO, EMP_ENCPN)
+values (#{user_id}, #{emp_ihidnum}, #{emp_anslry}, #{emp_acnuto}, #{emp_encpn})
+</insert>
+
+<insert id="insertEmployee_position">
+insert into employee_position
+	(USER_ID, DEPT_CODE, EMPPSITN_RSPOFC, EMPPSITN_GNFD_DE)
+values (#{user_id}, #{dept_code}, #{emppsitn_rspofc}, now()) 
+</insert>
+
+<!-- <update id="">
+</update>
+
+<delete id="" >
+</delete>
+
+<select id="" resultType="">
+</select> -->
+
+</mapper>

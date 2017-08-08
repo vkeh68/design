@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.SalesMapper">
+
+	<resultMap id="yearSales" type="java.util.HashMap">
+		<result property="year" column="year" />
+		<result property="totalPrice" column="totalPrice" />
+	</resultMap>
+
+	<resultMap id="daySales" type="java.util.HashMap">
+		<result property="bill_issu_de" column="bill_issu_de" />
+		<result property="totalPrice" column="totalPrice" />
+
+	</resultMap>
+
+	<select id="yearSales" resultMap="yearSales">
+		select
+		date_format((b.BILL_ISSU_DE), '%Y') as year, sum(b.BILL_TOTAMT) as
+		totalPrice
+		from bill b
+		where
+		(b.BILL_ISSU_DE
+		like concat(#{year}, '%') or b.BILL_ISSU_DE like
+		concat(#{year}-1, '%')
+		or
+		b.BILL_ISSU_DE like concat(#{year}-2, '%'))
+		group by date_format((b.BILL_ISSU_DE), '%Y');
+
+
+	</select>
+
+	<select id="daySales" resultMap="daySales">
+		<![CDATA[
+		select b.BILL_ISSU_DE
+		as bill_issu_de, sum(b.BILL_TOTAMT) as
+		totalPrice from
+		bill b
+		where (b.BILL_ISSU_DE <= curDate() and
+		b.BILL_ISSU_DE >=
+		subDate(curDate(),
+		Interval 7 DAY)) group by
+		b.BILL_ISSU_DE;
+		]]>
+	</select>
+</mapper>

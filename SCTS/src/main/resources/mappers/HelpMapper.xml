@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="yjc.wdb.mapper.HelpMapper">
+<!-- sql이란 매퍼에서 변수처럼 만들어 include를 이용해 편리하게 사용 가능 -->
+<sql id="search"> 
+	<if test="searchType != null" >
+		<if test="searchType == 't'.toString()">
+			AND a.bbsctt_sj LIKE CONCAT('%', #{keyword}, '%')
+		</if>
+		<if test="searchType == 'c'.toString()">
+			AND a.bbsctt_cn LIKE CONCAT('%', #{keyword}, '%')
+		</if>
+		<if test="searchType == 'w'.toString()">
+			AND b.user_id LIKE CONCAT('%', #{keyword}, '%')
+		</if>
+		<if test="searchType == 'tc'.toString()">
+			AND (a.bbsctt_sj LIKE CONCAT('%', #{keyword}, '%')
+			OR a.bbsctt_cn LIKE CONCAT('%', #{keyword}, '%'))
+		</if>
+	</if>
+</sql>
+
+	<insert id="insertHelp">
+		insert into bbsctt (bbsctt_sj ,bbsctt_cn)
+		values(#{bbsctt_sj}, #{bbsctt_cn})
+	</insert>
+	
+	<insert id="insertHelp2">
+		insert into bbsctt_writing(bhf_code, user_id, bbsctgry_code, bbsctt_code, bbsctt_rgsde)
+		values(#{bhf_code}, #{user_id}, #{bbsctgry_code}, #{bbsctt_code}, now())
+	</insert>
+	
+	<select id="maxCode" resultType="int">
+		SELECT MAX(bbsctt_code)
+		from bbsctt
+	</select>
+	
+	<select id="readHelp" resultType="HelpVO">
+		select bbsctt_sj, bbsctt_cn
+		from bbsctt
+		where bbsctt_code = #{bbsctt_code}
+	</select>
+	
+	<update id="updateHelp">
+		update bbsctt set bbsctt_sj =#{bbsctt_sj}, bbsctt_cn =#{bbsctt_cn}
+		where bbsctt_code = #{bbsctt_code}
+	</update>
+	
+	<update id="updateHelp2">
+		update bbsctt_writing set bhf_code =#{bhf_code}, bbsctgry_code =#{bbsctgry_code}, bbsctt_rgsde = now()
+		where bbsctt_code = #{bbsctt_code}
+	</update>
+	
+	<delete id="deleteHelp">
+		delete from bbsctt
+		where bbsctt_code = #{bbsctt_code}
+	</delete>
+	
+	<select id="listPage" resultType="HelpVO">
+		select a.bbsctt_code, b.bhf_code, a.bbsctt_sj, b.user_id,
+		b.bbsctgry_code,b.bbsctt_rgsde
+		from bbsctt_writing b, bbsctt a
+		where a.bbsctt_code = b.bbsctt_code
+		order by bbsctt_code
+		limit #{page}, 10
+	</select>
+	
+	<select id="listCriteria" resultType="HelpVO">
+		select a.bbsctt_code, b.bhf_code, a.bbsctt_sj, b.user_id,
+		b.bbsctgry_code,b.bbsctt_rgsde
+		from bbsctt_writing b, bbsctt a
+		where a.bbsctt_code = b.bbsctt_code
+		order by bbsctt_code
+		limit #{pageStart}, #{perPageNum} 
+	</select>
+	
+	<select id="countSearch" resultType="int">
+		select count(b.bhf_code)
+		from bbsctt_writing b, bbsctt a
+		where a.bbsctt_code = b.bbsctt_code
+		AND b.bhf_code = #{bhf_code}
+	<include refid="search"></include>
+	</select>
+	
+	<select id="listSearch" resultType="HelpVO">
+	<![CDATA[
+		select a.bbsctt_code, b.bhf_code, a.bbsctt_sj, b.user_id,
+		b.bbsctgry_code,b.bbsctt_rgsde
+		from bbsctt_writing b, bbsctt a
+		where a.bbsctt_code = b.bbsctt_code
+		AND b.bhf_code = #{bhf_code}
+	 ]]>
+	<include refid="search"></include>
+		order by a.bbsctt_code
+		limit #{pageStart}, #{perPageNum} 
+	</select>
+</mapper>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.CategoryMapper">
+
+<insert id="insertDetail_category">
+insert into detail_category
+	(LCLASCTGRY_CODE, DETAILCTGRY_NM)
+values (#{lclasctgry_code} #{detailctgry_nm})
+</insert>
+
+
+<select id="selectDetail_categoryList" resultType="java.util.Map">
+select 
+	DETAILCTGRY_CODE, DETAILCTGRY_NM, LCLASCTGRY_CODE
+from 
+	detail_category
+where
+	LCLASCTGRY_CODE = #{lclasctgry_code}
+</select>
+
+<select id="selectLarge_categoryList" resultType="java.util.Map">
+select 
+	LCLASCTGRY_CODE , LCLASCTGRY_NM, LCLASCTGRY_COLOR
+from 
+	large_classification_category
+</select>
+
+
+<insert id="insertLarge_classification_category">
+insert into large_classification_category
+	(LCLASCTGRY_NM, LCLASCTGRY_COLOR)
+values (#{lclasctgry_nm}, #{lclasctgry_color})
+</insert>
+
+<select id="selectCategoryLocation" resultType="java.util.Map">
+
+select
+	TILE_CODE, TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y, BEACON_CODE
+from
+	tile
+where
+	TILE_CODE in	(
+						select
+							TILE_CODE
+						from
+							detail_category_location
+						where
+							DETAILCTGRY_CODE = #{detailctgry_code}
+						)
+and
+	DRW_CODE = #{drw_code}
+</select>
+
+<!-- 
+deleteForRegister
+deleteForRegister_position
+
+두개 같이 쓰는 거임. 묶으면 안됨 일부러 나눠놧음
+ -->
+<delete id="deleteForRegister" parameterType="java.util.Map">
+
+delete from detail_category_location
+where
+	DETAILCTGRY_CODE = #{detailctgry_code}
+and
+	TILE_CODE IN	(
+						select
+							TILE_CODE
+						from
+							tile
+						where
+							DRW_CODE = #{drw_code}
+						)
+</delete>
+
+
+<delete id="deleteForRegister_position" parameterType="java.util.Map">
+delete from detail_category_location
+where
+	TILE_CODE IN	(
+						select
+							TILE_CODE
+						from
+							tile
+						where
+							(TILE_CRDNT_X, TILE_CRDNT_Y) IN 
+								<foreach collection="tileList" item="item" index="index"
+								separator="," open="(" close=")">
+									( #{item.tile_crdnt_x}, #{item.tile_crdnt_y} )
+								</foreach>
+						and
+							DRW_CODE = #{drw_code}
+					)
+</delete>
+
+<insert id="insertDetail_category_location" parameterType="java.util.Map">
+insert into detail_category_location
+	(DETAILCTGRY_CODE, TILE_CODE, DETAILCTGRYLC_APPLC_DE)
+values
+<foreach collection="tileList" item="item" index="index"
+	separator="," open="" close="">
+		(
+			#{detailctgry_code}, 
+			(
+				select 
+					TILE_CODE 
+				from 
+					tile 
+				where 
+					TILE_CRDNT_X = #{item.tile_crdnt_x} 
+				and 
+					TILE_CRDNT_Y = #{item.tile_crdnt_y}
+				and
+					DRW_CODE = #{drw_code}
+			),
+			now()
+		)
+</foreach>
+
+</insert>
+
+<!-- <update id="">
+</update>
+
+<delete id="" >
+</delete>
+
+<select id="" resultType="">
+</select>
+ -->
+</mapper>

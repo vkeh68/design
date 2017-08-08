@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.Coupon_holdMapper">
+
+<insert id="insertCoupon_hold">
+insert into coupon_hold
+	(USER_ID, COUPON_CODE, COUPONHOLD_USE_AT)
+values (#{user_id}, #{coupon_code}, #{couponhold_use_at})
+</insert>
+
+<!-- 포스기에서 고객아이디를 입력 시 현재 존재하는 물품 리스트의 물품 코드들과 고객 아이디를 통하여
+고객이 사용할 수 있는 쿠폰들을 조회하는 쿼리문 -->
+<select id="selectCouponHoldGoods" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+select
+	g.goods_code, g.goods_nm, c.coupon_code, c.coupon_nm, c.coupon_dscnt, c.coupon_end_de
+from
+	goods g,
+	coupon c,
+	(
+		select
+			goods_code, coupon_code
+		from
+			coupon_goods_creation
+		where
+			goods_code IN
+				<foreach collection="goods_code_Array" item="item" 
+					index="index" separator="," open="(" close=")">
+					
+					#{item}
+				</foreach>  
+				
+		and
+			coupon_code IN	(
+								select
+									coupon_code
+								from
+									coupon_hold
+								where
+									user_id = #{user_id}
+								and
+									couponhold_use_at = 'no'
+							)
+	) ch
+where
+	g.GOODS_CODE = ch.goods_code
+and
+	c.COUPON_CODE = ch.coupon_code
+and
+	now()	BETWEEN c.COUPON_BEGIN_DE 
+			AND c.COUPON_END_DE
+</select>
+
+<!-- <update id="">
+</update>
+
+<delete id="" >
+</delete>
+
+<select id="" resultType="">
+</select> -->
+
+</mapper>

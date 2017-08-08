@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.DepartmentMapper">
+
+<insert id="insertDepartment">
+insert into department
+	(DEPT_NM)
+values (#{dept_nm})
+</insert>
+
+<insert id="insertDepartment_position">
+insert into department_position
+	(DEPT_CODE, BHF_CODE, DEPTPSITN_ESTBL_DE)
+values (#{dept_code}, #{bhf_code}, now())
+</insert>
+
+<!-- <update id="">
+</update>
+
+<delete id="" >
+</delete>
+
+<select id="" resultType="">
+</select> -->
+
+</mapper>

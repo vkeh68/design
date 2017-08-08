@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.EventMapper">
+
+<select id="eventList" resultType="EventVO">
+	select * from event;
+</select>
+
+<select id="eventOne" resultType="EventVO">
+	select * from event where e_id = #{e_id}
+</select>
+
+</mapper>

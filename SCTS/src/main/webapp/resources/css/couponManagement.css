@@ -1,0 +1,87 @@
+ 	.table-hover{
+		font-family: 'Malgun Gothic';
+		font-size: 15px;
+	}
+	
+	/* 모달 css */
+ 	.modal-layout{
+		display:none;
+		position: fixed;  /* 스크롤해도 레이어는 고정 */
+		width: 40%;
+		left:50%;
+		margin-left: -20%; /* width의 절반 */ 
+		height:300px;
+		top: 50%;
+		margin-top: -150px;  /* height의 절반  이 두개가 가운데 배치를 위한것 */
+		z-index: 10000;
+		overflow:auto;  /* 레이어 넘치면 스크롤 생기도록. */
+
+		/*스타일링이에요 고객님 */
+		border: 1px solid #000;
+		background-color: #eee;
+		padding: 1em;
+		box-sizing: border-box;*/
+	}
+	
+	 .myModals{
+	 	display:none;
+		position: fixed;  /* 스크롤해도 레이어는 고정 */
+		width: 40%;
+		left:50%;
+		margin-left: -20%; /* width의 절반 */ 
+		height:300px;
+		top: 50%;
+		margin-top: -150px;  /* height의 절반  이 두개가 가운데 배치를 위한것 */
+		z-index: 10000;
+		overflow:auto;  /* 레이어 넘치면 스크롤 생기도록. */
+
+		/*스타일링이에요 고객님 */
+		border: 1px solid #000;
+		background-color: #eee;
+		padding: 1em;
+		box-sizing: border-box;*/
+	}
+	
+	td, th{
+		text-align:center;
+	} 
+
+	/* 불투명 배경에 대한 스타일 */
+	.bgLayer{
+		display: none;
+		position:absolute;
+		top: 0;
+		left: 0;
+		width:100%;
+		height: 100%;
+		background-color: #000;
+		opacity: .5;	/* 불투명도 지정 .5란 0.5를 말하는 것 50% */
+		filter: alpha(opacity=50);    /* 불투명도 지정 (IE8을 위한) */
+		z-index: 9000;
+	}
+	
+	
+	/* 화면이 좁을 때 레이어 너비를 넓힌다. */
+	@media(max-width: 600px){
+		.layer{
+			width: 80%;
+			margin-left: -40%;
+		}
+	}
+	
+	/* 끝 */
+	
+	.regist{
+		float:right;
+		margin-bottom: 10px; 
+	}
+	
+	.page-header{
+		padding: 15px;
+		
+	}
+	
+	.breadcrumb{
+		padding-bottom: 40px;
+	}
+	

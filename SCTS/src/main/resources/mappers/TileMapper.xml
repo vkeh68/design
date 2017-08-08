@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.TileMapper">
+
+<insert id="insertTile">
+insert into tile
+	(TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y, DRW_CODE)
+values(#{tile_nm}, #{tile_crdnt_x}, #{tile_crdnt_x}, #{drw_code})
+</insert>
+
+<!-- 
+	도면 등록할 때 처음 등록되는 타일을 한번에 등록시키기 위해서 사용하려 해보았지만 실패
+	이유는 한번에 두개 테이블에 동시에 데이터를 넣어야 해서임. 일단 쉽게짜고 추후에 수정 가능하다면 사용할 계획
+ -->
+<insert id="insertDrawingTile" parameterType="java.util.Map">
+insert into tile
+	(TILE_NM, TILE_CRDNT_X, TILE_CRDNT_Y, DRW_CODE)
+values
+<foreach collection="tileList" item="tile" separator=",">
+        ( #{tile.tile_nm}, #{tile.tile_crdnt_x}, #{tile.tile_crdnt_y}, #{tile.drw_code} )
+</foreach>
+</insert>
+
+
+<!-- 존재하는 타일리스트 전부를 뽑아옴, 여기서 비콘이 셋팅되어 있으면 셋팅된 비콘의 메이저 마이너를 얻어옴 -->
+<select id="selectTileList" resultType="java.util.HashMap">
+select
+	t.TILE_NM tile_nm, b.BEACON_MJR beacon_mjr, b.BEACON_MNR beacon_mnr
+from
+	tile t LEFT OUTER JOIN beacon b
+ON
+	t.BEACON_CODE = b.BEACON_CODE
+</select>
+
+<select id="selectTileListUp" resultType="java.util.HashMap">
+select
+	*
+from
+	tile
+where
+	drw_code	=	(
+						select
+							drw_code
+						from
+							floor_information
+						where
+							bhf_code = #{bhf_code}
+						and
+							FLOORINFO_FLOOR = #{floor}
+						order by FLOORINFO_RGSDE desc, drw_code desc
+						limit 0,1
+					)
+</select>
+
+<!-- 타일 비콘 등록할 때 쓸 것 -->
+<update id="updateTileBeaconSet">
+update
+	tile
+set
+	BEACON_CODE =	(
+						select
+							BEACON_CODE
+						from
+							beacon
+						where
+							BEACON_MJR = #{beacon_mjr}
+						and
+							BEACON_MNR = #{beacon_mnr}
+					)
+where
+	TILE_CODE = #{tile_code}
+</update>
+
+<!-- 매장 등록 페이지에서 셋팅된 타일 클릭시 해당 타일 셋팅정보 끌고오는 쿼리문 -->
+<select id="selectTile_LocationOne" resultType="java.util.HashMap">
+select
+	t.tile_code, t.tile_nm, b.beacon_code, b.beacon_mjr, b.beacon_mnr
+
+from
+	tile t
+LEFT OUTER JOIN
+	beacon b
+ON
+	t.BEACON_CODE = b.BEACON_CODE
+
+where
+	DRW_CODE = #{drw_code}
+and
+	TILE_CRDNT_X = #{tile_crdnt_x}
+and
+	TILE_CRDNT_Y = #{tile_crdnt_y}
+</select>
+
+<!-- <update id="">
+</update>
+
+<delete id="" >
+</delete>
+
+<select id="" resultType="">
+</select> -->
+
+</mapper>

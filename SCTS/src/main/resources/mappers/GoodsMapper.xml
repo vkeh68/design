@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="yjc.wdb.mapper.GoodsMapper">
+
+<insert id="insertGoods">
+insert into goods
+	(GOODS_NM, GOODS_PC, GOODS_DC, DETAILCTGRY_CODE, GOODS_IMAGE)
+values (#{goods_nm}, #{goods_pc}, #{goods_dc}, #{detailctgry_code}, #{goods_image})
+</insert>
+
+<select id="selectGoodsList" resultType="GoodsVO">
+
+	select * 
+	from goods
+</select>
+
+<select id="selectPageGoods" resultType="GoodsVO">
+select
+	*
+from
+	goods
+limit #{pageStart}, #{perPageNum} 
+</select>
+
+<select id="countSearch" resultType="int">
+		select count(goods_code)
+		from goods
+</select>
+
+<select id="likeGoodsList" resultType="GoodsVO">
+	select
+		*
+	from
+		goods
+	where
+		GOODS_NM
+	like concat
+	('%',#{goodsName},'%')
+</select>
+
+<select id="selectGoodsOne" resultType="GoodsVO">
+select
+	*
+from
+	goods
+where GOODS_CODE = #{goods_code}
+</select>
+
+<delete id="deleteStock">
+	delete from goods where goods_code = #{goods_code};
+</delete>
+
+<select id="selectAdNotGoodsList" resultType="GoodsVO">
+select g.*
+	from goods g, supply_goods sg
+	where g.GOODS_CODE = sg.GOODS_CODE and sg.bhf_code = #{bhf_code}
+</select>
+
+</mapper>

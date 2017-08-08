@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+  
+  <mapper namespace="yjc.wdb.mapper.UserMapper">
+  
+  <select id="loginUser" resultType="int">
+    select count(*) 
+    from  user 
+    where user_id = #{user_id} and user_pw= #{user_pw}
+  </select>
+  
+  <insert id="registerUser">
+  insert into user
+  values(#{user_id}, #{user_pw}, #{age}, #{gender});
+  </insert>
+  
+  <select id="checkUser" resultType="int">
+  	select count(user_id)
+  	from user
+  	where user_id = #{user_id}
+  </select>
+  
+  </mapper>
